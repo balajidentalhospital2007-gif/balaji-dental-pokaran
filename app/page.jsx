@@ -5,6 +5,7 @@ import Header from "../components/Header";
 import MainSections from "../components/MainSections";
 import FooterAndTeam from "../components/FooterAndTeam";
 import { clinicContent } from "../clinicData";
+import ClinicSlider from '../components/ClinicSlider';
 
 export default function HomePage() {
   const [lang, setLang] = useState("en");
@@ -44,10 +45,10 @@ export default function HomePage() {
     window.addEventListener("storage", syncData);
     window.addEventListener("balaji_data_changed", syncData);
 
-    return () => {
-      window.removeEventListener("storage", syncData);
-      window.removeEventListener("balaji_data_changed", syncData);
-    };
+  return () => {
+        window.removeEventListener("storage", syncData);
+        window.removeEventListener("balaji_data_changed", syncData);
+      };
   }, []);
 
   return (
@@ -65,6 +66,7 @@ export default function HomePage() {
         dynamicGallery={config.gallery}
         dynamicBlogs={config.blogs}
       />
+     <ClinicSlider lang={lang} dynamicGallery={config.gallery} />
       <FooterAndTeam 
         lang={lang} 
         content={clinicContent} 

@@ -101,9 +101,13 @@ export default function MainSections({ lang, content, dynamicGallery, dynamicBlo
           
           {/* Doctor Profile Card */}
           <div className="lg:col-span-5 bg-gradient-to-tr from-slate-50 to-teal-50/50 rounded-2xl p-5 border border-slate-200 flex flex-col items-center text-center space-y-4">
-            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-teal-600 text-white flex items-center justify-center font-black text-2xl sm:text-3xl shadow-md shrink-0">
-              DR
-            </div>
+            <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-2xl overflow-hidden border-2 border-teal-500 shadow-md bg-white mx-auto shrink-0">
+                <img
+                  src="/images/doctor-main.jpeg"
+                  alt={t.chiefDoctor.name}
+                  className="w-full h-full object-cover object-top"
+                />
+              </div>
             
             <div className="space-y-1 w-full">
               <h3 className="font-black text-slate-900 text-base sm:text-lg break-words">
@@ -192,7 +196,7 @@ export default function MainSections({ lang, content, dynamicGallery, dynamicBlo
         </div>
       </section>
 
-      {/* 4. GALLERY */}
+      {/* 4. GALLERY 
       <section id="gallery" className="space-y-6">
         <div className="text-center max-w-xl mx-auto space-y-2 px-2">
           <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-teal-600">
@@ -234,6 +238,7 @@ export default function MainSections({ lang, content, dynamicGallery, dynamicBlo
           ))}
         </div>
       </section>
+      */}
 
       {/* 5. BLOG / DENTAL GUIDE (FIXED TEXT OVERFLOW) */}
       <section id="blog" className="space-y-6">
@@ -279,6 +284,15 @@ export default function MainSections({ lang, content, dynamicGallery, dynamicBlo
           <h2 className="text-xl sm:text-3xl font-black text-slate-900 break-words">
             Verified Certifications
           </h2>
+          <div className="pt-2">
+            <a
+              href="/certificates"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold shadow-sm transition"
+            >
+              <span>{lang === "hi" ? "सभी प्रमाणपत्र देखें" : "View All Certificates"}</span>
+              <span>→</span>
+            </a>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-5">

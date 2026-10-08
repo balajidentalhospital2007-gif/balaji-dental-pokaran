@@ -177,7 +177,7 @@ export default function Header({ lang, setLang, content, schedule, broadcast }) 
         <nav className="hidden lg:flex items-center gap-5 text-sm font-semibold text-slate-600">
           <a href="#about" className="hover:text-teal-600 transition">{lang === "en" ? "About" : "परिचय"}</a>
           <a href="#services" className="hover:text-teal-600 transition">{lang === "en" ? "Services" : "सेवाएं"}</a>
-          <a href="#gallery" className="hover:text-teal-600 transition">{lang === "en" ? "Gallery" : "गैलरी"}</a>
+          <a href="#clinic-tour" className="hover:text-teal-600 transition">{lang === "en" ? "Gallery" : "गैलरी"}</a>
           <a href="#blog" className="hover:text-teal-600 transition">{lang === "en" ? "Dental Guide" : "स्वास्थ्य ब्लॉग"}</a>
           <a href="#credentials" className="hover:text-teal-600 transition">{lang === "en" ? "Certificates" : "प्रमाणपत्र"}</a>
           <a href="#doctors" className="hover:text-teal-600 transition">{lang === "en" ? "Specialists" : "डॉक्टर्स"}</a>
@@ -217,7 +217,7 @@ export default function Header({ lang, setLang, content, schedule, broadcast }) 
           <nav className="flex flex-col gap-2 text-xs font-bold text-slate-700">
             <a href="#about" onClick={() => setMobileMenuOpen(false)} className="py-1">{lang === "en" ? "About Doctor" : "चिकित्सक परिचय"}</a>
             <a href="#services" onClick={() => setMobileMenuOpen(false)} className="py-1">{lang === "en" ? "Services" : "उपलब्ध सेवाएं"}</a>
-            <a href="#gallery" onClick={() => setMobileMenuOpen(false)} className="py-1">{lang === "en" ? "Clinic Gallery" : "गैलरी"}</a>
+            <a href="#clinic-tour" onClick={() => setMobileMenuOpen(false)} className="py-1">{lang === "en" ? "Clinic Gallery" : "गैलरी"}</a>
             <a href="#blog" onClick={() => setMobileMenuOpen(false)} className="py-1">{lang === "en" ? "Dental Health Guide" : "स्वास्थ्य ब्लॉग"}</a>
             <a href="#credentials" onClick={() => setMobileMenuOpen(false)} className="py-1">{lang === "en" ? "Certificates" : "प्रमाणपत्र"}</a>
             <a href="#doctors" onClick={() => setMobileMenuOpen(false)} className="py-1">{lang === "en" ? "Specialists Team" : "डॉक्टर टीम"}</a>

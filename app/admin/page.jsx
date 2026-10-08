@@ -1,711 +1,916 @@
-﻿"use client";
+﻿'use client';
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 
-import React, { useState, useEffect } from "react";
-import { 
-  Lock, Clock, Megaphone, MapPin, Image as ImageIcon, BookOpen, Users, 
-  Save, Trash2, Plus, Power, CheckCircle, ArrowLeft, Eye, EyeOff, AlertOctagon, Calendar, Check
-} from "lucide-react";
+// Default Hardened Administrator Password
+const DEFAULT_ADMIN_PASSWORD = 'Balaji@Pokaran#2026';
+
+// Fallback initial data structure matching the main clinic system
+const initialClinicConfig = {
+  schedule: {
+    daysEn: 'Monday - Saturday',
+    daysHi: 'सोमवार - शनिवार',
+    morningSlot: '09:00 AM - 01:30 PM',
+    eveningSlot: '04:30 PM - 08:30 PM',
+    sundaySlotEn: 'Sunday: Closed (Emergency on call)',
+    sundaySlotHi: 'रविवार: अवकाश (आपातकालीन कॉल पर)',
+    isOpenToday: true,
+  },
+  broadcast: {
+    enabled: false,
+    textEn: 'Notice: Clinic will remain closed this Sunday for scheduled sterilization.',
+    textHi: 'सूचना: आगामी रविवार को विशेष स्वच्छता एवं स्टरलाइज़ेशन के कारण क्लिनिक बंद रहेगा।',
+  },
+  location: {
+    addressEn: 'Near Government Hospital, Jaisalmer Road, Pokaran, Rajasthan 345021',
+    addressHi: 'राजकीय अस्पताल के पास, जैसलमेर रोड, पोकरण, राजस्थान 345021',
+    mapQuery: 'Balaji Dental Clinic Pokaran',
+    phone: '+91 94149 84524',
+    whatsapp: '919414984524',
+  },
+  team: [
+    { id: 1, name: 'Dr. Shashi Jangid', degree: 'BDS', role: 'Associate Dental Surgeon', type: 'Associate', image: '/images/doctor-1.jpeg' },
+    { id: 2, name: 'Dr. Ashish Bhutra', degree: 'BDS', role: 'Associate Dental Surgeon', type: 'Associate', image: '/images/doctor-2.jpeg' },
+    { id: 3, name: 'Dr. Jaydutt Paliwal', degree: 'BDS', role: 'Associate Dental Surgeon', type: 'Associate', image: '/images/doctor-3.jpeg' },
+  ],
+  gallery: [
+    { id: 1, src: '/images/h1.jpeg', titleEn: 'Reception & Patient Lounge', titleHi: 'रिसेप्शन एवं वेटिंग एरिया' },
+    { id: 2, src: '/images/h2.jpeg', titleEn: 'Modern Dental Operatory', titleHi: 'आधुनिक डेंटल चेयर एवं यूनिट' },
+    { id: 3, src: '/images/a1.jpeg', titleEn: 'Advanced Sterilization Center', titleHi: 'स्टरलाइजेशन एवं स्वच्छता कक्ष' },
+    { id: 4, src: '/images/a2.jpeg', titleEn: 'Digital RVG Diagnostic Unit', titleHi: 'डिजिटल डेंटल एक्सरे' },
+  ],
+  certificates: [],
+};
 
 export default function AdminPage() {
-  const [auth, setAuth] = useState(false);
-  const [passcode, setPasscode] = useState("");
-  const [activeTab, setActiveTab] = useState("timing");
-  const [saveAlert, setSaveAlert] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [loginError, setLoginError] = useState('');
 
-  const defaultData = {
-    schedule: { 
-      openHour12: 9, 
-      openMinute: "00", 
-      openPeriod: "AM",
-      closeHour12: 6, 
-      closeMinute: "30", 
-      closePeriod: "PM",
-      isEmergencyClosed: false,
-      emergencyReason: "क्लिनिक आज आपातकालीन कारणों से बंद है।",
-      weeklyOffDays: [0],
-      annualHolidays: [
-        { name: "दिवाली अवकाश", date: "2026-11-08" },
-        { name: "होली अवकाश", date: "2027-03-24" }
-      ]
-    },
-    broadcast: { 
-      isActive: true, 
-      textEn: "Free Dental Consultation & Checkup Camp Every Sunday! Call to book.", 
-      textHi: "प्रत्येक रविवार निःशुल्क दंत परामर्श एवं जांच शिविर! तुरंत स्लॉट बुक करें।" 
-    },
-    location: {
-      addressEn: "Plot No. 34, Near Govt. Hospital, Jodhpur Road, Pokaran, Rajasthan - 345021",
-      addressHi: "प्लॉट नं. 34, राजकीय अस्पताल के पास, जोधपुर रोड, पोकरण, राजस्थान - 345021",
-      mapQuery: "Pokaran,Government Hospital,Rajasthan,India"
-    },
-    gallery: [
-      { id: 1, title: "Modern Dental Operatory", category: "clinic", label: "एडवांस्ड डेंटल चेयर" },
-      { id: 2, title: "Class-B Autoclave Sterilization", category: "sterilization", label: "सख्त स्वच्छता व नसबंदी" },
-      { id: 3, title: "Digital RVG Diagnostic Suite", category: "equipment", label: "डिजिटल एक्स-रे यूनिट" }
-    ],
-    blogs: [
-      {
-        id: 1,
-        titleEn: "Why Dental Implants Are the Gold Standard",
-        titleHi: "डेंटल इम्प्लांट्स क्यों हैं सबसे सुरक्षित?",
-        descEn: "Learn how permanent implants prevent jawbone resorption.",
-        descHi: "जानिए कैसे डेंटल इम्प्लांट्स जबड़े की हड्डी को सुरक्षित रखते हैं।",
-        readTime: "3 min read"
-      }
-    ],
-    team: [
-      { name: "Dr. Shashi Jangid", degree: "BDS", role: "Associate Dental Surgeon" },
-      { name: "Dr. Ashish Bhutra", degree: "BDS", role: "Associate Dental Surgeon" },
-      { name: "Dr. Dushyant Soni", degree: "MDS", role: "Consultant Prosthodontist" }
-    ]
-  };
+  // Active Admin Tab
+  const [activeTab, setActiveTab] = useState('operations');
 
-  const [clinicData, setClinicData] = useState(defaultData);
-  const [newHoliday, setNewHoliday] = useState({ name: "", date: "" });
-  const [newGalleryItem, setNewGalleryItem] = useState({ title: "", category: "clinic", label: "" });
-  const [newBlog, setNewBlog] = useState({ titleEn: "", titleHi: "", descEn: "", descHi: "", readTime: "3 min read" });
-  const [newDoc, setNewDoc] = useState({ name: "", degree: "BDS", role: "Associate Dental Surgeon" });
+  // Main Configuration State
+  const [config, setConfig] = useState(initialClinicConfig);
+  const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
 
+  // Password Management State
+  const [pwdForm, setPwdForm] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });
+  const [pwdMsg, setPwdMsg] = useState({ text: '', type: '' });
+
+  // Doctor Form State
+  const [newDoctor, setNewDoctor] = useState({
+    name: '',
+    degree: 'BDS',
+    role: 'Associate Dental Surgeon',
+    type: 'Associate',
+    image: '',
+  });
+
+  // Clinic Tour Photo Form State
+  const [newTourImage, setNewTourImage] = useState({
+    titleEn: '',
+    titleHi: '',
+    src: '',
+  });
+
+  // Certificate Form State
+  const [newCert, setNewCert] = useState({
+    titleEn: '',
+    titleHi: '',
+    issuerEn: '',
+    issuerHi: '',
+    categoryEn: 'General',
+    categoryHi: 'सामान्य',
+    src: '',
+  });
+
+  // Load configuration and session on component mount
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("balaji_clinic_config");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (!parsed.schedule?.openHour12) {
-          parsed.schedule = { ...defaultData.schedule, ...parsed.schedule };
-        }
-        setClinicData(parsed);
+    if (typeof window !== 'undefined') {
+      const sessionAuth = sessionStorage.getItem('balaji_admin_auth');
+      if (sessionAuth === 'true') {
+        setIsAuthenticated(true);
       }
-    } catch (e) {
-      console.error("Config load error", e);
+
+      const storedConfig = localStorage.getItem('balaji_clinic_config');
+      if (storedConfig) {
+        try {
+          const parsed = JSON.parse(storedConfig);
+          setConfig((prev) => ({ ...prev, ...parsed }));
+        } catch (err) {
+          console.error('Failed to parse clinic config:', err);
+        }
+      }
     }
   }, []);
 
+  // Secure Password Retrieval
+  const getStoredPassword = () => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('balaji_admin_pwd') || DEFAULT_ADMIN_PASSWORD;
+    }
+    return DEFAULT_ADMIN_PASSWORD;
+  };
+
+  // Login Handler
   const handleLogin = (e) => {
     e.preventDefault();
-    if (passcode.trim() === "balaji2026") {
-      setAuth(true);
+    if (passwordInput === getStoredPassword()) {
+      setIsAuthenticated(true);
+      sessionStorage.setItem('balaji_admin_auth', 'true');
+      setLoginError('');
+      setPasswordInput('');
     } else {
-      alert("गलत पासकोड! दर्ज करें: balaji2026");
+      setLoginError('Invalid access password. Please try again.');
     }
   };
 
-  const handleSave = () => {
-    try {
-      localStorage.setItem("balaji_clinic_config", JSON.stringify(clinicData));
-      window.dispatchEvent(new Event("balaji_data_changed"));
-      setSaveAlert(true);
-      setTimeout(() => setSaveAlert(false), 2500);
-    } catch (err) {
-      alert("सेव करने में समस्या आई!");
+  // Logout Handler
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    sessionStorage.removeItem('balaji_admin_auth');
+  };
+
+  // Change Password Handler
+  const handleChangePassword = (e) => {
+    e.preventDefault();
+    if (pwdForm.oldPassword !== getStoredPassword()) {
+      setPwdMsg({ text: 'Current password does not match.', type: 'error' });
+      return;
+    }
+    if (pwdForm.newPassword.length < 8) {
+      setPwdMsg({ text: 'New password must be at least 8 characters long.', type: 'error' });
+      return;
+    }
+    if (pwdForm.newPassword !== pwdForm.confirmPassword) {
+      setPwdMsg({ text: 'New password and confirm password do not match.', type: 'error' });
+      return;
+    }
+
+    localStorage.setItem('balaji_admin_pwd', pwdForm.newPassword);
+    setPwdMsg({ text: 'Password successfully updated!', type: 'success' });
+    setPwdForm({ oldPassword: '', newPassword: '', confirmPassword: '' });
+  };
+
+  // Save General Configuration to LocalStorage
+  const saveConfiguration = (updatedConfig) => {
+    const dataToSave = updatedConfig || config;
+    setConfig(dataToSave);
+    localStorage.setItem('balaji_clinic_config', JSON.stringify(dataToSave));
+    setSaveSuccessMsg('All changes saved and synchronized successfully!');
+    setTimeout(() => setSaveSuccessMsg(''), 4000);
+  };
+
+  // File Upload Helper (Encodes Image into clean base64 data)
+  const handleImageFileRead = (e, callback) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => callback(reader.result);
+      reader.readAsDataURL(file);
     }
   };
 
-  const toggleDayOff = (dayIndex) => {
-    const current = clinicData.schedule.weeklyOffDays || [];
-    const updated = current.includes(dayIndex)
-      ? current.filter(d => d !== dayIndex)
-      : [...current, dayIndex];
-    setClinicData({
-      ...clinicData,
-      schedule: { ...clinicData.schedule, weeklyOffDays: updated }
-    });
+  // Doctor Management Handlers
+  const handleAddDoctor = (e) => {
+    e.preventDefault();
+    if (!newDoctor.name.trim()) {
+      alert('Please enter doctor name.');
+      return;
+    }
+    const updatedTeam = [
+      ...(config.team || []),
+      {
+        id: Date.now(),
+        ...newDoctor,
+        image: newDoctor.image || '/images/doctor-1.jpeg',
+      },
+    ];
+    const updatedConfig = { ...config, team: updatedTeam };
+    saveConfiguration(updatedConfig);
+    setNewDoctor({ name: '', degree: 'BDS', role: 'Associate Dental Surgeon', type: 'Associate', image: '' });
   };
 
-  const daysOfWeek = ["रवि", "सोम", "मंगल", "बुध", "गुरु", "शुक्र", "शनि"];
-  const hoursList = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-  const minutesList = ["00", "15", "30", "45"];
+  const handleRemoveDoctor = (id) => {
+    if (confirm('Are you sure you want to remove this doctor from the directory?')) {
+      const updatedTeam = (config.team || []).filter((doc) => doc.id !== id);
+      const updatedConfig = { ...config, team: updatedTeam };
+      saveConfiguration(updatedConfig);
+    }
+  };
 
-  if (!auth) {
+  // Clinic Tour Photo Handlers
+  const handleAddTourImage = (e) => {
+    e.preventDefault();
+    if (!newTourImage.src) {
+      alert('Please upload or select an image first.');
+      return;
+    }
+    const updatedGallery = [
+      ...(config.gallery || []),
+      {
+        id: Date.now(),
+        src: newTourImage.src,
+        titleEn: newTourImage.titleEn || 'Clinic Facility',
+        titleHi: newTourImage.titleHi || 'क्लिनिक सुविधा',
+      },
+    ];
+    const updatedConfig = { ...config, gallery: updatedGallery };
+    saveConfiguration(updatedConfig);
+    setNewTourImage({ titleEn: '', titleHi: '', src: '' });
+  };
+
+  const handleRemoveTourImage = (id) => {
+    if (confirm('Are you sure you want to delete this photo from the clinic tour?')) {
+      const updatedGallery = (config.gallery || []).filter((img) => img.id !== id);
+      const updatedConfig = { ...config, gallery: updatedGallery };
+      saveConfiguration(updatedConfig);
+    }
+  };
+
+  // Certificate Management Handlers
+  const handleAddCertificate = (e) => {
+    e.preventDefault();
+    if (!newCert.titleEn.trim() || !newCert.src) {
+      alert('Please provide certificate title and upload scanned copy.');
+      return;
+    }
+    const updatedCertificates = [
+      ...(config.certificates || []),
+      {
+        id: Date.now(),
+        ...newCert,
+      },
+    ];
+    const updatedConfig = { ...config, certificates: updatedCertificates };
+    saveConfiguration(updatedConfig);
+    setNewCert({ titleEn: '', titleHi: '', issuerEn: '', issuerHi: '', categoryEn: 'General', categoryHi: 'सामान्य', src: '' });
+  };
+
+  const handleRemoveCertificate = (id) => {
+    if (confirm('Delete this certificate?')) {
+      const updatedCertificates = (config.certificates || []).filter((c) => c.id !== id);
+      const updatedConfig = { ...config, certificates: updatedCertificates };
+      saveConfiguration(updatedConfig);
+    }
+  };
+
+  // ================= VIEW: LOGIN SCREEN (100% RESPONSIVE) =================
+  if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-3 sm:p-4">
-        <div className="max-w-xs sm:max-w-sm w-full bg-white rounded-3xl p-6 sm:p-8 shadow-2xl space-y-5">
-          <div className="text-center space-y-1.5">
-            <div className="w-12 h-12 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center mx-auto shadow-inner">
-              <Lock className="w-6 h-6" />
+      <div className="min-h-screen w-full bg-slate-900 flex items-center justify-center p-4 sm:p-6">
+        <div className="w-full max-w-md bg-white rounded-2xl sm:rounded-3xl shadow-2xl p-6 sm:p-8 space-y-6 mx-auto">
+          <div className="text-center space-y-2">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-teal-50 text-teal-700 rounded-xl sm:rounded-2xl flex items-center justify-center mx-auto text-xl sm:text-2xl font-black border border-teal-100">
+              🛡️
             </div>
-            <h2 className="text-lg sm:text-xl font-black text-slate-900 leading-tight">
-              Balaji Dental Clinic, Pokaran
-            </h2>
-            <p className="text-[11px] sm:text-xs text-slate-500 font-semibold">Admin Panel Login</p>
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Balaji Dental Admin</h1>
+            <p className="text-[11px] sm:text-xs text-slate-500 font-medium">Authorized Administrator Portal</p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-3.5">
+          <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-[11px] font-bold text-slate-700 mb-1">Passcode</label>
+              <label className="block text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                Admin Password
+              </label>
               <input
                 type="password"
-                placeholder="balaji2026"
-                value={passcode}
-                onChange={(e) => setPasscode(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                placeholder="••••••••••••"
+                value={passwordInput}
+                onChange={(e) => setPasswordInput(e.target.value)}
+                className="w-full px-3.5 py-3 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-teal-600 outline-none"
+                required
               />
             </div>
+
+            {loginError && (
+              <div className="p-3 bg-red-50 border border-red-200 text-red-600 text-xs font-semibold rounded-xl text-center">
+                {loginError}
+              </div>
+            )}
+
             <button
               type="submit"
-              className="w-full py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-md transition"
+              className="w-full py-3 sm:py-3.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md transition active:scale-[0.98]"
             >
-              Login to Dashboard
+              Sign In to Dashboard →
             </button>
           </form>
 
-          <div className="text-center pt-1">
-            <a href="/" className="text-[11px] text-slate-500 hover:text-teal-600 inline-flex items-center gap-1 font-semibold">
-              <ArrowLeft className="w-3 h-3" /> Back to Clinic Site
-            </a>
+          <div className="pt-2 text-center border-t border-slate-100">
+            <Link href="/" className="text-xs font-bold text-teal-700 hover:text-teal-900">
+              ← Return to Clinic Website
+            </Link>
           </div>
         </div>
       </div>
     );
   }
 
+  // ================= VIEW: FULL DASHBOARD (RESPONSIVE FOR ALL DEVICES) =================
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-800 font-sans pb-16 w-full overflow-x-hidden">
-      
-      {/* 1. कॉम्पैक्ट मोबाइल-फ़्रेंडली टॉपबार */}
-      <header className="bg-slate-900 text-white px-3 sm:px-6 py-2.5 sm:py-3.5 sticky top-0 z-40 shadow-md border-b border-slate-800">
-        <div className="max-w-5xl mx-auto flex items-center justify-between gap-2">
-          
-          <div className="flex items-center gap-2 min-w-0">
-            <a href="/" className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white shrink-0" title="Back to Website">
-              <ArrowLeft className="w-3.5 h-3.5" />
-            </a>
-            <div className="min-w-0">
-              <h1 className="font-black text-xs sm:text-base text-white truncate leading-tight">
-                Balaji Dental, Pokaran
-              </h1>
-              <p className="text-[9px] sm:text-[11px] text-teal-400 font-bold truncate">Master Admin Control</p>
-            </div>
+    <div className="min-h-screen w-full bg-slate-100 text-slate-900 pb-20 overflow-x-hidden">
+      {/* Top Navbar */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm w-full">
+        <div className="max-w-6xl mx-auto px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <span className="font-black text-base sm:text-lg text-teal-800 tracking-tight truncate">
+              Balaji Admin
+            </span>
+            <span className="text-[9px] sm:text-[10px] bg-teal-50 text-teal-800 font-bold px-2 py-0.5 rounded-full border border-teal-200 shrink-0">
+              Active
+            </span>
           </div>
 
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+            <Link
+              href="/"
+              target="_blank"
+              className="text-[11px] sm:text-xs font-bold text-teal-700 hover:text-teal-900 hidden sm:inline"
+            >
+              🌐 View Site
+            </Link>
             <button
-              onClick={handleSave}
-              className="flex items-center gap-1 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-black text-[11px] sm:text-xs shadow transition active:scale-95"
+              type="button"
+              onClick={handleLogout}
+              className="px-3 py-1.5 rounded-lg sm:rounded-xl bg-slate-100 hover:bg-red-50 text-slate-700 hover:text-red-600 text-xs font-bold border border-slate-200 hover:border-red-200 transition"
             >
-              <Save className="w-3.5 h-3.5 shrink-0" />
-              <span>Save</span>
-            </button>
-            <button 
-              onClick={() => setAuth(false)} 
-              className="p-1.5 sm:p-2 text-slate-400 hover:text-rose-400 rounded-lg shrink-0"
-              title="Logout"
-            >
-              <Power className="w-4 h-4" />
+              Logout ⎋
             </button>
           </div>
-
         </div>
       </header>
 
-      {/* सेव कन्फर्मेशन अलर्ट */}
-      {saveAlert && (
-        <div className="bg-emerald-600 text-white text-[11px] sm:text-xs py-2 px-3 text-center font-bold flex items-center justify-center gap-1.5 sticky top-12 z-30 shadow">
-          <CheckCircle className="w-3.5 h-3.5 shrink-0" />
-          <span>सफलतापूर्वक सेव हो गया! वेबसाइट लाइव अपडेट हो चुकी है।</span>
-        </div>
-      )}
+      {/* Main Container */}
+      <main className="max-w-6xl mx-auto px-3 sm:px-6 pt-4 sm:pt-6 space-y-4 sm:space-y-6 w-full">
+        {/* Success Alert Banner */}
+        {saveSuccessMsg && (
+          <div className="p-3 sm:p-4 bg-teal-600 text-white text-xs sm:text-sm font-bold rounded-xl sm:rounded-2xl shadow-md flex items-center justify-between gap-2">
+            <span className="truncate">✓ {saveSuccessMsg}</span>
+            <button type="button" onClick={() => setSaveSuccessMsg('')} className="text-white hover:text-teal-100 text-sm font-bold shrink-0 px-2">
+              ✕
+            </button>
+          </div>
+        )}
 
-      {/* 2. हॉरिजॉन्टल स्क्रॉल टैब्स (आईफ़ोन, एंड्रॉइड और डेस्कटॉप पर 100% फिट) */}
-      <div className="max-w-5xl mx-auto px-3 sm:px-6 pt-3 sm:pt-6">
-        <div className="flex gap-1.5 overflow-x-auto pb-2 scrollbar-none border-b border-slate-200">
-          {[
-            { id: "timing", label: "Timing & Chhutti", icon: Clock },
-            { id: "broadcast", label: "Notice Bar", icon: Megaphone },
-            { id: "location", label: "Location", icon: MapPin },
-            { id: "gallery", label: "Gallery", icon: ImageIcon },
-            { id: "blogs", label: "Blogs", icon: BookOpen },
-            { id: "team", label: "Doctors", icon: Users },
-          ].map((tab) => {
-            const Icon = tab.icon;
-            return (
+        {/* Mobile Horizontal Scrolling Tabs */}
+        <div className="w-full overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="bg-white rounded-xl sm:rounded-2xl p-1.5 border border-slate-200 shadow-sm flex items-center gap-1.5 w-max min-w-full sm:w-full">
+            {[
+              { id: 'operations', label: '⏰ Operations & Notice' },
+              { id: 'team', label: '👨‍⚕️ Doctors Directory' },
+              { id: 'gallery', label: '🖼️ Tour Photos' },
+              { id: 'certificates', label: '📜 Certificates' },
+              { id: 'security', label: '🔒 Security & Password' },
+            ].map((tab) => (
               <button
                 key={tab.id}
+                type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold whitespace-nowrap transition shrink-0 ${
+                className={`px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
                   activeTab === tab.id
-                    ? "bg-slate-900 text-white shadow-sm"
-                    : "bg-white text-slate-600 hover:bg-slate-200 border border-slate-200"
+                    ? 'bg-teal-700 text-white shadow-sm'
+                    : 'text-slate-600 hover:bg-slate-100'
                 }`}
               >
-                <Icon className="w-3 h-3" />
-                <span>{tab.label}</span>
+                {tab.label}
               </button>
-            );
-          })}
+            ))}
+          </div>
         </div>
-      </div>
 
-      {/* 3. मुख्य एडमिन फॉर्म्स */}
-      <main className="max-w-5xl mx-auto px-3 sm:px-6 pt-4 space-y-4">
-
-        {/* टैब 1: TIMINGS & HOLIDAYS */}
-        {activeTab === "timing" && (
-          <div className="space-y-4">
-            
-            {/* आपातकालीन अवकाश टॉगल */}
-            <div className={`p-4 sm:p-5 rounded-2xl border transition-all ${
-              clinicData.schedule.isEmergencyClosed 
-                ? "bg-rose-50 border-rose-300 ring-2 ring-rose-200" 
-                : "bg-white border-slate-200 shadow-sm"
-            }`}>
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-1.5">
-                    <AlertOctagon className={`w-4 h-4 shrink-0 ${clinicData.schedule.isEmergencyClosed ? "text-rose-600" : "text-slate-400"}`} />
-                    <h3 className="font-bold text-xs sm:text-sm text-slate-900">
-                      Emergency Chhutti / Today Closed
-                    </h3>
-                  </div>
-                  <p className="text-[10px] sm:text-xs text-slate-500">
-                    आपातकालीन स्थिति में क्लिनिक को आज बंद दिखाने के लिए इसे ऑन करें।
-                  </p>
-                </div>
-
-                <button
-                  onClick={() => setClinicData({
-                    ...clinicData,
-                    schedule: { ...clinicData.schedule, isEmergencyClosed: !clinicData.schedule.isEmergencyClosed }
-                  })}
-                  className={`px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[11px] sm:text-xs font-black transition shrink-0 ${
-                    clinicData.schedule.isEmergencyClosed
-                      ? "bg-rose-600 hover:bg-rose-700 text-white animate-pulse"
-                      : "bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300"
-                  }`}
-                >
-                  {clinicData.schedule.isEmergencyClosed ? "CHHUTTI ON (Click to Open)" : "MARK TODAY CLOSED"}
-                </button>
+        {/* ================= TAB 1: OPERATIONS & CLINIC TIMING ================= */}
+        {activeTab === 'operations' && (
+          <div className="space-y-4 sm:space-y-6 w-full">
+            {/* Quick Status & Broadcast Banner */}
+            <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-slate-200 shadow-sm space-y-4 w-full">
+              <div className="border-b pb-3 flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-sm sm:text-base font-bold text-slate-900">
+                  Status & Public Broadcast
+                </h2>
+                <span className={`text-[10px] sm:text-[11px] px-2.5 py-0.5 rounded-full font-bold ${config.schedule.isOpenToday ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
+                  {config.schedule.isOpenToday ? 'Clinic OPEN Today' : 'Clinic CLOSED Today'}
+                </span>
               </div>
 
-              {clinicData.schedule.isEmergencyClosed && (
-                <div className="mt-3 pt-3 border-t border-rose-200">
-                  <label className="block text-[10px] font-bold text-rose-900 mb-1">वेबसाइट पर दिखने वाला संदेश:</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <label className="flex items-start gap-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer">
                   <input
-                    type="text"
-                    value={clinicData.schedule.emergencyReason}
-                    onChange={(e) => setClinicData({
-                      ...clinicData,
-                      schedule: { ...clinicData.schedule, emergencyReason: e.target.value }
-                    })}
-                    className="w-full px-3 py-1.5 border border-rose-300 rounded-xl text-xs bg-white text-rose-950 focus:outline-none"
-                    placeholder="उदा. क्लिनिक आज आपातकालीन कारणों से बंद है।"
+                    type="checkbox"
+                    checked={config.schedule.isOpenToday}
+                    onChange={(e) => {
+                      const updated = {
+                        ...config,
+                        schedule: { ...config.schedule, isOpenToday: e.target.checked },
+                      };
+                      saveConfiguration(updated);
+                    }}
+                    className="w-4 h-4 mt-0.5 accent-teal-600 rounded cursor-pointer shrink-0"
                   />
+                  <div className="text-xs font-bold text-slate-800">
+                    Clinic Open Today
+                    <span className="block text-[10px] text-slate-500 font-normal mt-0.5">Toggle off if clinic is shut today</span>
+                  </div>
+                </label>
+
+                <label className="flex items-start gap-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={config.broadcast.enabled}
+                    onChange={(e) => {
+                      const updated = {
+                        ...config,
+                        broadcast: { ...config.broadcast, enabled: e.target.checked },
+                      };
+                      saveConfiguration(updated);
+                    }}
+                    className="w-4 h-4 mt-0.5 accent-teal-600 rounded cursor-pointer shrink-0"
+                  />
+                  <div className="text-xs font-bold text-slate-800">
+                    Show Alert Banner
+                    <span className="block text-[10px] text-slate-500 font-normal mt-0.5">Displays top alert message on site</span>
+                  </div>
+                </label>
+              </div>
+
+              {config.broadcast.enabled && (
+                <div className="space-y-3 pt-2">
+                  <div>
+                    <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Notice Message (English)</label>
+                    <input
+                      type="text"
+                      value={config.broadcast.textEn}
+                      onChange={(e) => setConfig({ ...config, broadcast: { ...config.broadcast, textEn: e.target.value } })}
+                      className="w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-teal-600 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Notice Message (Hindi)</label>
+                    <input
+                      type="text"
+                      value={config.broadcast.textHi}
+                      onChange={(e) => setConfig({ ...config, broadcast: { ...config.broadcast, textHi: e.target.value } })}
+                      className="w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-teal-600 outline-none"
+                    />
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* 12-Hour समय ड्रॉपडाउन */}
-            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-sm space-y-4">
-              <h3 className="font-bold text-xs sm:text-sm text-slate-900 border-b pb-2 flex items-center gap-1.5">
-                <Clock className="w-4 h-4 text-teal-600" />
-                <span>Daily Timings (12-Hour Format)</span>
-              </h3>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                {/* खुलने का समय */}
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-                  <label className="font-bold text-slate-800 block text-[11px]">सुबह खुलने का समय:</label>
-                  <div className="flex items-center gap-1.5">
-                    <select
-                      value={clinicData.schedule.openHour12}
-                      onChange={(e) => setClinicData({
-                        ...clinicData,
-                        schedule: { ...clinicData.schedule, openHour12: parseInt(e.target.value) }
-                      })}
-                      className="px-2.5 py-1.5 border rounded-lg bg-white font-bold text-xs"
-                    >
-                      {hoursList.map(h => <option key={h} value={h}>{h < 10 ? `0${h}` : h}</option>)}
-                    </select>
-
-                    <span className="font-black text-slate-400">:</span>
-
-                    <select
-                      value={clinicData.schedule.openMinute}
-                      onChange={(e) => setClinicData({
-                        ...clinicData,
-                        schedule: { ...clinicData.schedule, openMinute: e.target.value }
-                      })}
-                      className="px-2.5 py-1.5 border rounded-lg bg-white font-bold text-xs"
-                    >
-                      {minutesList.map(m => <option key={m} value={m}>{m}</option>)}
-                    </select>
-
-                    <select
-                      value={clinicData.schedule.openPeriod}
-                      onChange={(e) => setClinicData({
-                        ...clinicData,
-                        schedule: { ...clinicData.schedule, openPeriod: e.target.value }
-                      })}
-                      className="px-2.5 py-1.5 border rounded-lg bg-teal-50 border-teal-200 font-bold text-teal-800 text-xs"
-                    >
-                      <option value="AM">AM</option>
-                      <option value="PM">PM</option>
-                    </select>
-                  </div>
+            {/* Schedule Timings */}
+            <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-slate-200 shadow-sm space-y-4 w-full">
+              <h2 className="text-sm sm:text-base font-bold text-slate-900 border-b pb-3">OPD Working Hours</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+                <div>
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Morning Slot</label>
+                  <input
+                    type="text"
+                    value={config.schedule.morningSlot}
+                    onChange={(e) => setConfig({ ...config, schedule: { ...config.schedule, morningSlot: e.target.value } })}
+                    className="w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-teal-600 outline-none"
+                  />
                 </div>
-
-                {/* बंद होने का समय */}
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-                  <label className="font-bold text-slate-800 block text-[11px]">शाम बंद होने का समय:</label>
-                  <div className="flex items-center gap-1.5">
-                    <select
-                      value={clinicData.schedule.closeHour12}
-                      onChange={(e) => setClinicData({
-                        ...clinicData,
-                        schedule: { ...clinicData.schedule, closeHour12: parseInt(e.target.value) }
-                      })}
-                      className="px-2.5 py-1.5 border rounded-lg bg-white font-bold text-xs"
-                    >
-                      {hoursList.map(h => <option key={h} value={h}>{h < 10 ? `0${h}` : h}</option>)}
-                    </select>
-
-                    <span className="font-black text-slate-400">:</span>
-
-                    <select
-                      value={clinicData.schedule.closeMinute}
-                      onChange={(e) => setClinicData({
-                        ...clinicData,
-                        schedule: { ...clinicData.schedule, closeMinute: e.target.value }
-                      })}
-                      className="px-2.5 py-1.5 border rounded-lg bg-white font-bold text-xs"
-                    >
-                      {minutesList.map(m => <option key={m} value={m}>{m}</option>)}
-                    </select>
-
-                    <select
-                      value={clinicData.schedule.closePeriod}
-                      onChange={(e) => setClinicData({
-                        ...clinicData,
-                        schedule: { ...clinicData.schedule, closePeriod: e.target.value }
-                      })}
-                      className="px-2.5 py-1.5 border rounded-lg bg-teal-50 border-teal-200 font-bold text-teal-800 text-xs"
-                    >
-                      <option value="AM">AM</option>
-                      <option value="PM">PM</option>
-                    </select>
-                  </div>
+                <div>
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Evening Slot</label>
+                  <input
+                    type="text"
+                    value={config.schedule.eveningSlot}
+                    onChange={(e) => setConfig({ ...config, schedule: { ...config.schedule, eveningSlot: e.target.value } })}
+                    className="w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-teal-600 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Sunday Status</label>
+                  <input
+                    type="text"
+                    value={config.schedule.sundaySlotEn}
+                    onChange={(e) => setConfig({ ...config, schedule: { ...config.schedule, sundaySlotEn: e.target.value } })}
+                    className="w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-teal-600 outline-none"
+                  />
                 </div>
               </div>
             </div>
 
-            {/* साप्ताहिक अवकाश */}
-            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-sm space-y-3">
-              <h3 className="font-bold text-xs sm:text-sm text-slate-900">साप्ताहिक अवकाश (Weekly Off)</h3>
-              <div className="flex flex-wrap gap-1.5">
-                {daysOfWeek.map((day, idx) => {
-                  const isOff = (clinicData.schedule.weeklyOffDays || []).includes(idx);
-                  return (
-                    <button
-                      key={day}
-                      onClick={() => toggleDayOff(idx)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition border ${
-                        isOff
-                          ? "bg-rose-600 text-white border-rose-600"
-                          : "bg-slate-50 text-slate-700 border-slate-200"
-                      }`}
-                    >
-                      {day} {isOff ? "✓" : ""}
-                    </button>
-                  );
-                })}
+            {/* Location & Contacts */}
+            <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-slate-200 shadow-sm space-y-4 w-full">
+              <h2 className="text-sm sm:text-base font-bold text-slate-900 border-b pb-3">Clinic Location & Contacts</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div>
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Address (English)</label>
+                  <input
+                    type="text"
+                    value={config.location.addressEn}
+                    onChange={(e) => setConfig({ ...config, location: { ...config.location, addressEn: e.target.value } })}
+                    className="w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-teal-600 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Address (Hindi)</label>
+                  <input
+                    type="text"
+                    value={config.location.addressHi}
+                    onChange={(e) => setConfig({ ...config, location: { ...config.location, addressHi: e.target.value } })}
+                    className="w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-teal-600 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Inquiry Phone</label>
+                  <input
+                    type="text"
+                    value={config.location.phone}
+                    onChange={(e) => setConfig({ ...config, location: { ...config.location, phone: e.target.value } })}
+                    className="w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-teal-600 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Google Maps Query</label>
+                  <input
+                    type="text"
+                    value={config.location.mapQuery}
+                    onChange={(e) => setConfig({ ...config, location: { ...config.location, mapQuery: e.target.value } })}
+                    className="w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-teal-600 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="text-right pt-3 border-t">
+                <button
+                  type="button"
+                  onClick={() => saveConfiguration()}
+                  className="w-full sm:w-auto px-6 py-2.5 bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow transition"
+                >
+                  Save Operations Settings
+                </button>
               </div>
             </div>
+          </div>
+        )}
 
-            {/* वार्षिक अवकाश कैलेंडर */}
-            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-sm space-y-3">
-              <h3 className="font-bold text-xs sm:text-sm text-slate-900">त्यौहार व अवकाश कैलेंडर</h3>
-              <div className="space-y-1.5">
-                {(clinicData.schedule.annualHolidays || []).map((h, idx) => (
-                  <div key={idx} className="flex justify-between items-center p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs">
-                    <div className="min-w-0">
-                      <p className="font-bold text-slate-900 truncate">{h.name}</p>
-                      <p className="text-slate-500 text-[10px] font-mono">{h.date}</p>
+        {/* ================= TAB 2: DOCTORS DIRECTORY ================= */}
+        {activeTab === 'team' && (
+          <div className="space-y-4 sm:space-y-6 w-full">
+            {/* Add Doctor Form */}
+            <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-slate-200 shadow-sm space-y-4 w-full">
+              <h2 className="text-sm sm:text-base font-bold text-slate-900 border-b pb-3">Add Doctor to Directory</h2>
+              <form onSubmit={handleAddDoctor} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+                <div>
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Doctor Name *</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Dr. Rajesh Sharma"
+                    value={newDoctor.name}
+                    onChange={(e) => setNewDoctor({ ...newDoctor, name: e.target.value })}
+                    className="w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-teal-600 outline-none"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Degree</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. BDS, MDS"
+                    value={newDoctor.degree}
+                    onChange={(e) => setNewDoctor({ ...newDoctor, degree: e.target.value })}
+                    className="w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-teal-600 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Specialty Role</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Dental Surgeon"
+                    value={newDoctor.role}
+                    onChange={(e) => setNewDoctor({ ...newDoctor, role: e.target.value })}
+                    className="w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-teal-600 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Designation Type</label>
+                  <select
+                    value={newDoctor.type}
+                    onChange={(e) => setNewDoctor({ ...newDoctor, type: e.target.value })}
+                    className="w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-teal-600 outline-none bg-white"
+                  >
+                    <option value="Associate">Associate Surgeon</option>
+                    <option value="Consultant">Visiting Consultant</option>
+                  </select>
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Doctor Photo (from Device)</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleImageFileRead(e, (base64) => setNewDoctor({ ...newDoctor, image: base64 }))}
+                    className="w-full text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 cursor-pointer"
+                  />
+                  {newDoctor.image && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <img src={newDoctor.image} alt="Preview" className="w-10 h-10 object-cover rounded-lg border border-teal-300" />
+                      <span className="text-xs text-teal-700 font-semibold">✓ Photo attached</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="sm:col-span-2 md:col-span-3 text-right pt-2">
+                  <button
+                    type="submit"
+                    className="w-full sm:w-auto px-6 py-2.5 bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow transition"
+                  >
+                    + Add Doctor Profile
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* List Existing Doctors */}
+            <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-slate-200 shadow-sm space-y-4 w-full">
+              <div className="border-b pb-3 flex items-center justify-between">
+                <h2 className="text-sm sm:text-base font-bold text-slate-900">Active Doctors</h2>
+                <span className="text-[11px] text-slate-500 font-medium">{config.team?.length || 0} Doctors</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                {config.team?.map((doc) => (
+                  <div key={doc.id || doc.name} className="p-3.5 border border-slate-200 rounded-xl bg-white shadow-sm flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      {doc.image ? (
+                        <img src={doc.image} alt={doc.name} className="w-11 h-11 rounded-xl object-cover border border-teal-100 shrink-0" />
+                      ) : (
+                        <div className="w-11 h-11 rounded-xl bg-teal-50 text-teal-700 font-bold text-xs flex items-center justify-center shrink-0 border">DR</div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-slate-900 truncate">{doc.name}</p>
+                        <p className="text-[10px] text-teal-700 font-semibold truncate">{doc.degree} • {doc.type}</p>
+                        <p className="text-[10px] text-slate-500 truncate">{doc.role}</p>
+                      </div>
                     </div>
                     <button
-                      onClick={() => setClinicData({
-                        ...clinicData,
-                        schedule: {
-                          ...clinicData.schedule,
-                          annualHolidays: clinicData.schedule.annualHolidays.filter((_, i) => i !== idx)
-                        }
-                      })}
-                      className="text-rose-600 font-bold p-1 shrink-0"
+                      type="button"
+                      onClick={() => handleRemoveDoctor(doc.id)}
+                      className="text-red-500 hover:text-red-700 font-bold text-xs px-2 py-1 rounded hover:bg-red-50 transition shrink-0"
+                      title="Remove"
                     >
-                      Delete
+                      ✕
                     </button>
                   </div>
                 ))}
               </div>
-
-              <div className="p-3 bg-teal-50/50 rounded-xl border border-teal-100 flex flex-col sm:flex-row gap-2">
-                <input
-                  type="text"
-                  placeholder="अवकाश का नाम (उदा. दिवाली)"
-                  value={newHoliday.name}
-                  onChange={(e) => setNewHoliday({ ...newHoliday, name: e.target.value })}
-                  className="px-3 py-1.5 border rounded-lg text-xs bg-white flex-1"
-                />
-                <input
-                  type="date"
-                  value={newHoliday.date}
-                  onChange={(e) => setNewHoliday({ ...newHoliday, date: e.target.value })}
-                  className="px-3 py-1.5 border rounded-lg text-xs bg-white"
-                />
-                <button
-                  onClick={() => {
-                    if (!newHoliday.name || !newHoliday.date) return alert("कृपया नाम और तारीख भरें!");
-                    setClinicData({
-                      ...clinicData,
-                      schedule: {
-                        ...clinicData.schedule,
-                        annualHolidays: [...(clinicData.schedule.annualHolidays || []), newHoliday]
-                      }
-                    });
-                    setNewHoliday({ name: "", date: "" });
-                  }}
-                  className="px-3 py-1.5 bg-teal-600 text-white font-bold rounded-lg text-xs shrink-0"
-                >
-                  जोड़ें
-                </button>
-              </div>
-            </div>
-
-          </div>
-        )}
-
-        {/* टैब 2: BROADCAST NOTICE */}
-        {activeTab === "broadcast" && (
-          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-sm space-y-4">
-            <div className="flex justify-between items-center border-b pb-3">
-              <h3 className="font-bold text-xs sm:text-sm text-slate-900">Header Broadcast Bar</h3>
-              <button
-                onClick={() => setClinicData({
-                  ...clinicData,
-                  broadcast: { ...clinicData.broadcast, isActive: !clinicData.broadcast.isActive }
-                })}
-                className={`px-3 py-1 rounded-xl text-[11px] font-bold ${
-                  clinicData.broadcast.isActive ? "bg-emerald-600 text-white" : "bg-rose-100 text-rose-800"
-                }`}
-              >
-                {clinicData.broadcast.isActive ? "Active (दिख रहा है)" : "Hidden (छुपा हुआ)"}
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <div>
-                <label className="font-bold block mb-1 text-[11px]">Notice in English</label>
-                <input
-                  type="text"
-                  value={clinicData.broadcast.textEn}
-                  onChange={(e) => setClinicData({
-                    ...clinicData,
-                    broadcast: { ...clinicData.broadcast, textEn: e.target.value }
-                  })}
-                  className="w-full px-3 py-2 border rounded-xl"
-                />
-              </div>
-
-              <div>
-                <label className="font-bold block mb-1 text-[11px]">सूचना हिंदी में</label>
-                <input
-                  type="text"
-                  value={clinicData.broadcast.textHi}
-                  onChange={(e) => setClinicData({
-                    ...clinicData,
-                    broadcast: { ...clinicData.broadcast, textHi: e.target.value }
-                  })}
-                  className="w-full px-3 py-2 border rounded-xl"
-                />
-              </div>
             </div>
           </div>
         )}
 
-        {/* टैब 3: LOCATION */}
-        {activeTab === "location" && (
-          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-sm space-y-3 text-xs">
-            <h3 className="font-bold text-xs sm:text-sm text-slate-900 border-b pb-2">क्लिनिक पता एवं लोकेशन</h3>
-            <div>
-              <label className="font-bold block mb-1 text-[11px]">Address (English)</label>
-              <input
-                type="text"
-                value={clinicData.location.addressEn}
-                onChange={(e) => setClinicData({
-                  ...clinicData,
-                  location: { ...clinicData.location, addressEn: e.target.value }
-                })}
-                className="w-full px-3 py-2 border rounded-xl"
-              />
-            </div>
-            <div>
-              <label className="font-bold block mb-1 text-[11px]">पता (हिंदी)</label>
-              <input
-                type="text"
-                value={clinicData.location.addressHi}
-                onChange={(e) => setClinicData({
-                  ...clinicData,
-                  location: { ...clinicData.location, addressHi: e.target.value }
-                })}
-                className="w-full px-3 py-2 border rounded-xl"
-              />
-            </div>
-          </div>
-        )}
+        {/* ================= TAB 3: CLINIC TOUR PHOTOS ================= */}
+        {activeTab === 'gallery' && (
+          <div className="space-y-4 sm:space-y-6 w-full">
+            <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-slate-200 shadow-sm space-y-4 w-full">
+              <h2 className="text-sm sm:text-base font-bold text-slate-900 border-b pb-3">Add Tour Photo</h2>
+              <form onSubmit={handleAddTourImage} className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div>
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Caption (English)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Modern Dental Operatory"
+                    value={newTourImage.titleEn}
+                    onChange={(e) => setNewTourImage({ ...newTourImage, titleEn: e.target.value })}
+                    className="w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-teal-600 outline-none"
+                  />
+                </div>
 
-        {/* टैब 4: GALLERY */}
-        {activeTab === "gallery" && (
-          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-sm space-y-4">
-            <h3 className="font-bold text-xs sm:text-sm text-slate-900 border-b pb-2">क्लिनिक गैलरी</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {clinicData.gallery.map((item, idx) => (
-                <div key={idx} className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl relative text-xs">
-                  <span className="text-[9px] px-2 py-0.5 rounded bg-teal-100 text-teal-800 font-bold uppercase">{item.category}</span>
-                  <p className="font-bold text-slate-900 mt-1 truncate">{item.title}</p>
-                  <p className="text-slate-500 text-[10px] truncate">{item.label}</p>
+                <div>
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Caption (Hindi)</label>
+                  <input
+                    type="text"
+                    placeholder="उदा. आधुनिक डेंटल चेयर एवं यूनिट"
+                    value={newTourImage.titleHi}
+                    onChange={(e) => setNewTourImage({ ...newTourImage, titleHi: e.target.value })}
+                    className="w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-teal-600 outline-none"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Select Facility Photo *</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleImageFileRead(e, (base64) => setNewTourImage({ ...newTourImage, src: base64 }))}
+                    className="w-full text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 cursor-pointer"
+                  />
+                  {newTourImage.src && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <img src={newTourImage.src} alt="Preview" className="w-16 h-12 object-cover rounded-lg border border-teal-300" />
+                      <span className="text-xs text-teal-700 font-semibold">✓ Photo selected</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="sm:col-span-2 text-right pt-2">
                   <button
-                    onClick={() => setClinicData({
-                      ...clinicData,
-                      gallery: clinicData.gallery.filter((_, i) => i !== idx)
-                    })}
-                    className="absolute top-2 right-2 text-rose-600 p-1"
+                    type="submit"
+                    className="w-full sm:w-auto px-6 py-2.5 bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow transition"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    + Add to Tour Slider
                   </button>
                 </div>
-              ))}
+              </form>
             </div>
 
-            <div className="p-3 bg-teal-50/50 rounded-xl border border-teal-100 space-y-2 text-xs">
-              <p className="font-bold text-teal-900 text-[11px]">नया फोटो कार्ड जोड़ें</p>
-              <input
-                type="text"
-                placeholder="Title (English)"
-                value={newGalleryItem.title}
-                onChange={(e) => setNewGalleryItem({ ...newGalleryItem, title: e.target.value })}
-                className="w-full px-3 py-1.5 border rounded-lg bg-white"
-              />
-              <input
-                type="text"
-                placeholder="विवरण (हिंदी)"
-                value={newGalleryItem.label}
-                onChange={(e) => setNewGalleryItem({ ...newGalleryItem, label: e.target.value })}
-                className="w-full px-3 py-1.5 border rounded-lg bg-white"
-              />
-              <button
-                onClick={() => {
-                  if (!newGalleryItem.title) return;
-                  setClinicData({ ...clinicData, gallery: [...clinicData.gallery, newGalleryItem] });
-                  setNewGalleryItem({ title: "", category: "clinic", label: "" });
-                }}
-                className="px-3 py-1.5 bg-teal-600 text-white font-bold rounded-lg text-xs"
-              >
-                कार्ड जोड़ें
-              </button>
-            </div>
-          </div>
-        )}
+            <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-slate-200 shadow-sm space-y-4 w-full">
+              <div className="border-b pb-3 flex items-center justify-between">
+                <h2 className="text-sm sm:text-base font-bold text-slate-900">Active Slider Photos</h2>
+                <span className="text-[11px] text-slate-500 font-medium">{config.gallery?.length || 0} Photos</span>
+              </div>
 
-        {/* टैब 5: BLOGS */}
-        {activeTab === "blogs" && (
-          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-sm space-y-4">
-            <h3 className="font-bold text-xs sm:text-sm text-slate-900 border-b pb-2">दंत स्वास्थ्य ब्लॉग</h3>
-            <div className="space-y-2">
-              {clinicData.blogs.map((b, idx) => (
-                <div key={idx} className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl flex justify-between items-start text-xs">
-                  <div className="min-w-0 pr-2">
-                    <p className="font-bold text-slate-900 truncate break-all">{b.titleEn}</p>
-                    <p className="text-slate-500 text-[10px] truncate break-all">{b.descEn}</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {config.gallery?.map((img) => (
+                  <div key={img.id || img.src} className="relative group border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm flex flex-col">
+                    <img src={img.src} alt={img.titleEn} className="w-full aspect-[4/3] object-cover" />
+                    <div className="p-2.5 bg-white flex-1 flex flex-col justify-between">
+                      <p className="text-[11px] font-bold text-slate-800 truncate">{img.titleEn}</p>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveTourImage(img.id)}
+                        className="mt-2 text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-100 py-1 px-2 rounded-lg text-center transition"
+                      >
+                        Remove
+                      </button>
+                    </div>
                   </div>
-                  <button
-                    onClick={() => setClinicData({
-                      ...clinicData,
-                      blogs: clinicData.blogs.filter((_, i) => i !== idx)
-                    })}
-                    className="text-rose-600 p-1 shrink-0"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            <div className="p-3 bg-teal-50/50 rounded-xl border border-teal-100 space-y-2 text-xs">
-              <p className="font-bold text-teal-900 text-[11px]">नया ब्लॉग पोस्ट जोड़ें</p>
-              <input
-                type="text"
-                placeholder="Title (English)"
-                value={newBlog.titleEn}
-                onChange={(e) => setNewBlog({ ...newBlog, titleEn: e.target.value })}
-                className="w-full px-3 py-1.5 border rounded-lg bg-white"
-              />
-              <input
-                type="text"
-                placeholder="शीर्षक (हिंदी)"
-                value={newBlog.titleHi}
-                onChange={(e) => setNewBlog({ ...newBlog, titleHi: e.target.value })}
-                className="w-full px-3 py-1.5 border rounded-lg bg-white"
-              />
-              <button
-                onClick={() => {
-                  if (!newBlog.titleEn) return;
-                  setClinicData({ ...clinicData, blogs: [...clinicData.blogs, newBlog] });
-                  setNewBlog({ titleEn: "", titleHi: "", descEn: "", descHi: "", readTime: "3 min read" });
-                }}
-                className="px-3 py-1.5 bg-teal-600 text-white font-bold rounded-lg text-xs"
-              >
-                ब्लॉग जोड़ें
-              </button>
+                ))}
+              </div>
             </div>
           </div>
         )}
 
-        {/* टैब 6: DOCTORS TEAM */}
-        {activeTab === "team" && (
-          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-sm space-y-4">
-            <h3 className="font-bold text-xs sm:text-sm text-slate-900 border-b pb-2">डॉक्टर्स टीम</h3>
-            <div className="space-y-2">
-              {clinicData.team.map((d, idx) => (
-                <div key={idx} className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl flex justify-between items-center text-xs">
-                  <div className="min-w-0 pr-2">
-                    <p className="font-bold text-slate-900 truncate">{d.name} ({d.degree})</p>
-                    <p className="text-teal-600 text-[10px] truncate">{d.role}</p>
-                  </div>
+        {/* ================= TAB 4: MEDICAL CERTIFICATES ================= */}
+        {activeTab === 'certificates' && (
+          <div className="space-y-4 sm:space-y-6 w-full">
+            <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-slate-200 shadow-sm space-y-4 w-full">
+              <h2 className="text-sm sm:text-base font-bold text-slate-900 border-b pb-3">Upload Certificate</h2>
+              <form onSubmit={handleAddCertificate} className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div>
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Title (English) *</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Fellow in Oral Implantology"
+                    value={newCert.titleEn}
+                    onChange={(e) => setNewCert({ ...newCert, titleEn: e.target.value })}
+                    className="w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-teal-600 outline-none"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Title (Hindi)</label>
+                  <input
+                    type="text"
+                    placeholder="उदा. ओरल इम्प्लांटोलॉजी फेलोशिप"
+                    value={newCert.titleHi}
+                    onChange={(e) => setNewCert({ ...newCert, titleHi: e.target.value })}
+                    className="w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-teal-600 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Issuing Authority</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Indian Dental Association"
+                    value={newCert.issuerEn}
+                    onChange={(e) => setNewCert({ ...newCert, issuerEn: e.target.value })}
+                    className="w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-teal-600 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Category</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Implantology"
+                    value={newCert.categoryEn}
+                    onChange={(e) => setNewCert({ ...newCert, categoryEn: e.target.value })}
+                    className="w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-teal-600 outline-none"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Certificate Image *</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleImageFileRead(e, (base64) => setNewCert({ ...newCert, src: base64 }))}
+                    className="w-full text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 cursor-pointer"
+                  />
+                  {newCert.src && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <img src={newCert.src} alt="Preview" className="w-14 h-14 object-cover rounded-lg border border-teal-200" />
+                      <span className="text-xs text-teal-700 font-semibold">✓ Certificate image ready</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="sm:col-span-2 text-right pt-2">
                   <button
-                    onClick={() => setClinicData({
-                      ...clinicData,
-                      team: clinicData.team.filter((_, i) => i !== idx)
-                    })}
-                    className="text-rose-600 p-1 shrink-0"
+                    type="submit"
+                    className="w-full sm:w-auto px-6 py-2.5 bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow transition"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    + Upload Certificate
                   </button>
                 </div>
-              ))}
+              </form>
             </div>
 
-            <div className="p-3 bg-teal-50/50 rounded-xl border border-teal-100 space-y-2 text-xs">
-              <p className="font-bold text-teal-900 text-[11px]">नया डॉक्टर जोड़ें</p>
-              <input
-                type="text"
-                placeholder="Doctor Name"
-                value={newDoc.name}
-                onChange={(e) => setNewDoc({ ...newDoc, name: e.target.value })}
-                className="w-full px-3 py-1.5 border rounded-lg bg-white"
-              />
-              <button
-                onClick={() => {
-                  if (!newDoc.name) return;
-                  setClinicData({ ...clinicData, team: [...clinicData.team, newDoc] });
-                  setNewDoc({ name: "", degree: "BDS", role: "Associate Dental Surgeon" });
-                }}
-                className="px-3 py-1.5 bg-teal-600 text-white font-bold rounded-lg text-xs"
-              >
-                डॉक्टर जोड़ें
-              </button>
+            <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-slate-200 shadow-sm space-y-4 w-full">
+              <h2 className="text-sm sm:text-base font-bold text-slate-900 border-b pb-3">Uploaded Certificates ({config.certificates?.length || 0})</h2>
+              {(!config.certificates || config.certificates.length === 0) ? (
+                <p className="text-xs text-slate-400 italic">No custom uploaded certificates yet.</p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  {config.certificates.map((c) => (
+                    <div key={c.id} className="p-3 border border-slate-200 rounded-xl flex items-center gap-2.5 bg-white">
+                      <img src={c.src} alt={c.titleEn} className="w-11 h-11 object-cover rounded-lg border shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-slate-900 truncate">{c.titleEn}</p>
+                        <p className="text-[10px] text-slate-500 truncate">{c.issuerEn}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveCertificate(c.id)}
+                        className="text-red-500 hover:text-red-700 text-xs font-bold px-2 py-1 shrink-0"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
 
+        {/* ================= TAB 5: SECURITY & PASSWORD ================= */}
+        {activeTab === 'security' && (
+          <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-8 border border-slate-200 shadow-sm space-y-5 max-w-lg mx-auto w-full">
+            <div>
+              <h2 className="text-base sm:text-lg font-bold text-slate-900">Change Admin Password</h2>
+              <p className="text-[11px] sm:text-xs text-slate-500 mt-1">
+                Update access credentials for the clinic administration portal.
+              </p>
+            </div>
+
+            <form onSubmit={handleChangePassword} className="space-y-3.5">
+              <div>
+                <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Current Password *</label>
+                <input
+                  type="password"
+                  placeholder="Old Password"
+                  value={pwdForm.oldPassword}
+                  onChange={(e) => setPwdForm({ ...pwdForm, oldPassword: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs sm:text-sm focus:ring-2 focus:ring-teal-600 outline-none"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">New Strong Password * (Min. 8 characters)</label>
+                <input
+                  type="password"
+                  placeholder="New Strong Password"
+                  value={pwdForm.newPassword}
+                  onChange={(e) => setPwdForm({ ...pwdForm, newPassword: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs sm:text-sm focus:ring-2 focus:ring-teal-600 outline-none"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Confirm New Password *</label>
+                <input
+                  type="password"
+                  placeholder="Confirm New Password"
+                  value={pwdForm.confirmPassword}
+                  onChange={(e) => setPwdForm({ ...pwdForm, confirmPassword: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs sm:text-sm focus:ring-2 focus:ring-teal-600 outline-none"
+                  required
+                />
+              </div>
+
+              {pwdMsg.text && (
+                <div className={`p-3 text-xs font-semibold rounded-xl text-center border ${pwdMsg.type === 'success' ? 'bg-teal-50 border-teal-200 text-teal-800' : 'bg-red-50 border-red-200 text-red-600'}`}>
+                  {pwdMsg.text}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                className="w-full py-3 bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow transition"
+              >
+                Save New Password
+              </button>
+            </form>
+          </div>
+        )}
       </main>
     </div>
   );

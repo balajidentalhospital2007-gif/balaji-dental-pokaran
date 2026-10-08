@@ -16,13 +16,10 @@ export default function FooterAndTeam({ lang, content, dynamicTeam, dynamicLocat
     message: ""
   });
 
-  const teamList = dynamicTeam && dynamicTeam.length > 0 ? dynamicTeam : [
-    { name: "Dr. Shashi Jangid", degree: "BDS", role: "Associate Dental Surgeon", type: "Associate" },
-    { name: "Dr. Ashish Bhutra", degree: "BDS", role: "Associate Dental Surgeon", type: "Associate" },
-    { name: "Dr. Jaydutt Paliwal", degree: "BDS", role: "Associate Dental Surgeon", type: "Associate" },
-    { name: "Dr. Dushyant Soni", degree: "MDS", role: "Consultant Prosthodontist (Weekly)", type: "Consultant" },
-    { name: "Dr. Mahipal Singh", degree: "MDS", role: "Consultant Orthodontist (Weekly)", type: "Consultant" },
-    { name: "Dr. Rahul Choudhary", degree: "MDS", role: "Consultant Pedodontist (Weekly)", type: "Consultant" }
+const teamList = [
+    { name: "Dr. Shashi Jangid", degree: "BDS", role: "Associate Dental Surgeon", type: "Associate", image: "/images/doctor-3.jpeg" },
+    { name: "Dr. Ashish Bhutra", degree: "BDS", role: "Associate Dental Surgeon", type: "Associate", image: "/images/doctor-2.jpeg" },
+    { name: "Dr. Jaydutt Paliwal", degree: "BDS", role: "Associate Dental Surgeon", type: "Associate", image: "/images/doctor-1.jpeg" },
   ];
 
   const clinicAddress = lang === "hi" 
@@ -85,9 +82,17 @@ export default function FooterAndTeam({ lang, content, dynamicTeam, dynamicLocat
               key={idx} 
               className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center gap-3 min-w-0"
             >
-              <div className="w-10 h-10 rounded-xl bg-teal-50 border border-teal-100 flex items-center justify-center font-black text-xs text-teal-700 shrink-0">
-                DR
-              </div>
+            {member.image ? (
+    <img
+      src={member.image}
+      alt={member.name}
+      className="w-11 h-11 rounded-xl object-cover border border-teal-200 shadow-sm shrink-0"
+    />
+  ) : (
+    <div className="w-10 h-10 rounded-xl bg-teal-50 border border-teal-100 flex items-center justify-center font-bold text-teal-700 text-xs shrink-0">
+      DR
+    </div>
+)}
               <div className="space-y-0.5 min-w-0 flex-1">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <h3 className="font-bold text-slate-900 text-xs sm:text-sm truncate">
