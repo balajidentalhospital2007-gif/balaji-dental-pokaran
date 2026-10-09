@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { Phone, Clock, MapPin, Menu, X, AlertCircle, Shield, Megaphone, ArrowRight } from "lucide-react";
 
 export default function Header({ lang, setLang, content, schedule, broadcast }) {
@@ -159,7 +160,7 @@ export default function Header({ lang, setLang, content, schedule, broadcast }) 
 
       {/* 3. Main Brand Navbar */}
       <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 sm:py-3.5 flex items-center justify-between gap-3">
-        <a href="#" className="flex items-center gap-2 min-w-0">
+        <a href="/" className="flex items-center gap-2 min-w-0">
           <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-teal-600 to-cyan-500 flex items-center justify-center text-white font-black text-base sm:text-xl shadow-md shrink-0">
             B
           </div>
@@ -175,13 +176,18 @@ export default function Header({ lang, setLang, content, schedule, broadcast }) 
 
         {/* Desktop Links */}
         <nav className="hidden lg:flex items-center gap-5 text-sm font-semibold text-slate-600">
-          <a href="#about" className="hover:text-teal-600 transition">{lang === "en" ? "About" : "परिचय"}</a>
-          <a href="#services" className="hover:text-teal-600 transition">{lang === "en" ? "Services" : "सेवाएं"}</a>
-          <a href="#clinic-tour" className="hover:text-teal-600 transition">{lang === "en" ? "Gallery" : "गैलरी"}</a>
-          <a href="#blog" className="hover:text-teal-600 transition">{lang === "en" ? "Dental Guide" : "स्वास्थ्य ब्लॉग"}</a>
-          <a href="#credentials" className="hover:text-teal-600 transition">{lang === "en" ? "Certificates" : "प्रमाणपत्र"}</a>
-          <a href="#doctors" className="hover:text-teal-600 transition">{lang === "en" ? "Specialists" : "डॉक्टर्स"}</a>
-          <a href="#appointment" className="hover:text-teal-600 transition">{lang === "en" ? "Location" : "लोकेशन"}</a>
+          <a href="/#about" className="hover:text-teal-600 transition">{lang === "en" ? "About" : "परिचय"}</a>
+          <a href="/#services" className="hover:text-teal-600 transition">{lang === "en" ? "Services" : "सेवाएं"}</a>
+          <a href="/#clinic-tour" className="hover:text-teal-600 transition">{lang === "en" ? "Gallery" : "गैलरी"}</a>
+          <a href="/#blog" className="hover:text-teal-600 transition">{lang === "en" ? "Dental Guide" : "स्वास्थ्य ब्लॉग"}</a>
+          <a href="/#credentials" className="hover:text-teal-600 transition">{lang === "en" ? "Certificates" : "प्रमाणपत्र"}</a>
+          
+          {/* Doctors Page Link via Next.js Link */}
+          <Link href="/doctors" className="hover:text-teal-600 transition text-teal-700 font-bold">
+            {lang === "en" ? "Specialists" : "डॉक्टर्स"}
+          </Link>
+
+          <a href="/#appointment" className="hover:text-teal-600 transition">{lang === "en" ? "Location" : "लोकेशन"}</a>
         </nav>
 
         {/* Desktop CTAs */}
@@ -194,7 +200,7 @@ export default function Header({ lang, setLang, content, schedule, broadcast }) 
             <span>+91 9782687123</span>
           </a>
           <a
-            href="#appointment"
+            href="/#appointment"
             className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-white bg-teal-600 hover:bg-teal-700 shadow-sm"
           >
             {t.cta.bookAppointment}
@@ -215,13 +221,22 @@ export default function Header({ lang, setLang, content, schedule, broadcast }) 
       {mobileMenuOpen && (
         <div className="lg:hidden bg-white border-t border-slate-100 px-4 py-3 space-y-2 shadow-lg">
           <nav className="flex flex-col gap-2 text-xs font-bold text-slate-700">
-            <a href="#about" onClick={() => setMobileMenuOpen(false)} className="py-1">{lang === "en" ? "About Doctor" : "चिकित्सक परिचय"}</a>
-            <a href="#services" onClick={() => setMobileMenuOpen(false)} className="py-1">{lang === "en" ? "Services" : "उपलब्ध सेवाएं"}</a>
-            <a href="#clinic-tour" onClick={() => setMobileMenuOpen(false)} className="py-1">{lang === "en" ? "Clinic Gallery" : "गैलरी"}</a>
-            <a href="#blog" onClick={() => setMobileMenuOpen(false)} className="py-1">{lang === "en" ? "Dental Health Guide" : "स्वास्थ्य ब्लॉग"}</a>
-            <a href="#credentials" onClick={() => setMobileMenuOpen(false)} className="py-1">{lang === "en" ? "Certificates" : "प्रमाणपत्र"}</a>
-            <a href="#doctors" onClick={() => setMobileMenuOpen(false)} className="py-1">{lang === "en" ? "Specialists Team" : "डॉक्टर टीम"}</a>
-            <a href="#appointment" onClick={() => setMobileMenuOpen(false)} className="py-1">{lang === "en" ? "Location & Timings" : "पता व अपॉइंटमेंट"}</a>
+            <a href="/#about" onClick={() => setMobileMenuOpen(false)} className="py-1">{lang === "en" ? "About Doctor" : "चिकित्सक परिचय"}</a>
+            <a href="/#services" onClick={() => setMobileMenuOpen(false)} className="py-1">{lang === "en" ? "Services" : "उपलब्ध सेवाएं"}</a>
+            <a href="/#clinic-tour" onClick={() => setMobileMenuOpen(false)} className="py-1">{lang === "en" ? "Clinic Gallery" : "गैलरी"}</a>
+            <a href="/#blog" onClick={() => setMobileMenuOpen(false)} className="py-1">{lang === "en" ? "Dental Health Guide" : "स्वास्थ्य ब्लॉग"}</a>
+            <a href="/#credentials" onClick={() => setMobileMenuOpen(false)} className="py-1">{lang === "en" ? "Certificates" : "प्रमाणपत्र"}</a>
+            
+            {/* Mobile Doctors Link */}
+            <Link 
+              href="/doctors" 
+              onClick={() => setMobileMenuOpen(false)} 
+              className="py-1 text-teal-700 font-bold"
+            >
+              {lang === "en" ? "Specialists Team" : "डॉक्टर टीम"}
+            </Link>
+
+            <a href="/#appointment" onClick={() => setMobileMenuOpen(false)} className="py-1">{lang === "en" ? "Location & Timings" : "पता व अपॉइंटमेंट"}</a>
           </nav>
           <div className="pt-2 border-t border-slate-100 flex gap-2">
             <a
@@ -231,7 +246,7 @@ export default function Header({ lang, setLang, content, schedule, broadcast }) 
               Call Clinic
             </a>
             <a
-              href="#appointment"
+              href="/#appointment"
               onClick={() => setMobileMenuOpen(false)}
               className="flex-1 text-center py-2 rounded-xl bg-teal-600 text-white font-bold text-xs"
             >

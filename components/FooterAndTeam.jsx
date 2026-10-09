@@ -16,11 +16,13 @@ export default function FooterAndTeam({ lang, content, dynamicTeam, dynamicLocat
     message: ""
   });
 
-const teamList = [
+const defaultDoctors = [
     { name: "Dr. Shashi Jangid", degree: "BDS", role: "Associate Dental Surgeon", type: "Associate", image: "/images/doctor-3.jpeg" },
     { name: "Dr. Ashish Bhutra", degree: "BDS", role: "Associate Dental Surgeon", type: "Associate", image: "/images/doctor-2.jpeg" },
     { name: "Dr. Jaydutt Paliwal", degree: "BDS", role: "Associate Dental Surgeon", type: "Associate", image: "/images/doctor-1.jpeg" },
   ];
+
+  const teamList = (dynamicTeam && dynamicTeam.length > 0) ? dynamicTeam : defaultDoctors;
 
   const clinicAddress = lang === "hi" 
     ? (dynamicLocation?.addressHi || t.address)
@@ -82,17 +84,14 @@ const teamList = [
               key={idx} 
               className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center gap-3 min-w-0"
             >
-            {member.image ? (
-    <img
-      src={member.image}
-      alt={member.name}
-      className="w-11 h-11 rounded-xl object-cover border border-teal-200 shadow-sm shrink-0"
-    />
-  ) : (
-    <div className="w-10 h-10 rounded-xl bg-teal-50 border border-teal-100 flex items-center justify-center font-bold text-teal-700 text-xs shrink-0">
-      DR
-    </div>
-)}
+ <img
+                    src={member.image || `/images/doctor-${(idx % 3) + 1}.jpeg`}
+                    alt={member.name}
+                    onError={(e) => {
+                      e.currentTarget.src = `/images/doctor-${(idx % 3) + 1}.jpeg`;
+                    }}
+                    className="w-11 h-11 rounded-xl object-cover border border-teal-200 shadow-sm shrink-0"
+                  />
               <div className="space-y-0.5 min-w-0 flex-1">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <h3 className="font-bold text-slate-900 text-xs sm:text-sm truncate">

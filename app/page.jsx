@@ -6,6 +6,8 @@ import MainSections from "../components/MainSections";
 import FooterAndTeam from "../components/FooterAndTeam";
 import { clinicContent } from "../clinicData";
 import ClinicSlider from '../components/ClinicSlider';
+import { db } from '../lib/firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 export default function HomePage() {
   const [lang, setLang] = useState("en");
@@ -30,25 +32,29 @@ export default function HomePage() {
   const [config, setConfig] = useState(defaultState);
 
   useEffect(() => {
-    const syncData = () => {
-      const saved = localStorage.getItem("balaji_clinic_config");
-      if (saved) {
-        try {
-          setConfig(JSON.parse(saved));
-        } catch (e) {
-          console.error("Failed to parse config", e);
-        }
+    // 1. Firebase Cloud Firestore se Live Sync
+    const docRef = doc(db, 'settings', 'clinic_config');
+    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const cloudData = docSnap.data();
+        setConfig((prev) => ({ ...prev, ...cloudData }));
+        localStorage.setItem('balaji_clinic_config', JSON.stringify(cloudData));
       }
-    };
+    }, (error) => {
+      console.warn('Realtime listener error, fallback to local:', error);
+    });
 
-    syncData();
-    window.addEventListener("storage", syncData);
-    window.addEventListener("balaji_data_changed", syncData);
+    // 2. Local backup
+    const local = localStorage.getItem('balaji_clinic_config');
+    if (local) {
+      try {
+        setConfig((prev) => ({ ...prev, ...JSON.parse(local) }));
+      } catch (e) {
+        console.error(e);
+      }
+    }
 
-  return () => {
-        window.removeEventListener("storage", syncData);
-        window.removeEventListener("balaji_data_changed", syncData);
-      };
+    return () => unsubscribe();
   }, []);
 
   return (
@@ -63,13 +69,19 @@ export default function HomePage() {
       <MainSections 
         lang={lang} 
         content={clinicContent} 
+        gallery={config.gallery && config.gallery.length > 0 ? config.gallery : clinicContent.gallery}
         dynamicGallery={config.gallery}
         dynamicBlogs={config.blogs}
       />
-     <ClinicSlider lang={lang} dynamicGallery={config.gallery} />
+      <ClinicSlider 
+        lang={lang} 
+        gallery={config.gallery && config.gallery.length > 0 ? config.gallery : clinicContent.gallery}
+        dynamicGallery={config.gallery} 
+      />
       <FooterAndTeam 
         lang={lang} 
         content={clinicContent} 
+        team={config.team && config.team.length > 0 ? config.team : clinicContent.team}
         dynamicTeam={config.team}
         dynamicLocation={config.location}
       />

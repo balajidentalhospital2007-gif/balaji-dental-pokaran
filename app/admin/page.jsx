@@ -1,6 +1,9 @@
 ﻿'use client';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { db } from '../../lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { compressImage } from '../../lib/compressImage';
 
 // Default Hardened Administrator Password
 const DEFAULT_ADMIN_PASSWORD = 'Balaji@Pokaran#2026';
@@ -29,9 +32,9 @@ const initialClinicConfig = {
     whatsapp: '919414984524',
   },
   team: [
-    { id: 1, name: 'Dr. Shashi Jangid', degree: 'BDS', role: 'Associate Dental Surgeon', type: 'Associate', image: '/images/doctor-1.jpeg' },
-    { id: 2, name: 'Dr. Ashish Bhutra', degree: 'BDS', role: 'Associate Dental Surgeon', type: 'Associate', image: '/images/doctor-2.jpeg' },
-    { id: 3, name: 'Dr. Jaydutt Paliwal', degree: 'BDS', role: 'Associate Dental Surgeon', type: 'Associate', image: '/images/doctor-3.jpeg' },
+    { id: 1, name: 'Dr. Shashi Jangid', degree: 'BDS', role: 'Associate Dental Surgeon', type: 'Associate', specialty: 'Pediatric Dental Care, Crown & Bridge', schedule: 'Daily OPD', image: '/images/doctor-1.jpeg' },
+    { id: 2, name: 'Dr. Ashish Bhutra', degree: 'BDS', role: 'Associate Dental Surgeon', type: 'Associate', specialty: 'Single Sitting RCT, Teeth Whitening', schedule: 'Daily OPD', image: '/images/doctor-2.jpeg' },
+    { id: 3, name: 'Dr. Jaydutt Paliwal', degree: 'BDS', role: 'Associate Dental Surgeon', type: 'Associate', specialty: 'General Consultation, Extraction', schedule: 'Daily OPD', image: '/images/doctor-3.jpeg' },
   ],
   gallery: [
     { id: 1, src: '/images/h1.jpeg', titleEn: 'Reception & Patient Lounge', titleHi: 'रिसेप्शन एवं वेटिंग एरिया' },
@@ -53,17 +56,20 @@ export default function AdminPage() {
   // Main Configuration State
   const [config, setConfig] = useState(initialClinicConfig);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   // Password Management State
   const [pwdForm, setPwdForm] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });
   const [pwdMsg, setPwdMsg] = useState({ text: '', type: '' });
 
-  // Doctor Form State
+  // Doctor Form State (Includes Specialty & Delhi Guest Doctor support)
   const [newDoctor, setNewDoctor] = useState({
     name: '',
     degree: 'BDS',
     role: 'Associate Dental Surgeon',
     type: 'Associate',
+    specialty: '',
+    schedule: 'Daily OPD (9:00 AM - 6:30 PM)',
     image: '',
   });
 
@@ -92,17 +98,38 @@ export default function AdminPage() {
       if (sessionAuth === 'true') {
         setIsAuthenticated(true);
       }
+    }
 
-      const storedConfig = localStorage.getItem('balaji_clinic_config');
-      if (storedConfig) {
-        try {
-          const parsed = JSON.parse(storedConfig);
-          setConfig((prev) => ({ ...prev, ...parsed }));
-        } catch (err) {
-          console.error('Failed to parse clinic config:', err);
+    const fetchConfig = async () => {
+      try {
+        // 1. Firebase Cloud Firestore se latest data load
+        const docRef = doc(db, 'settings', 'clinic_config');
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const cloudData = docSnap.data();
+          setConfig((prev) => ({ ...prev, ...cloudData }));
+          localStorage.setItem('balaji_clinic_config', JSON.stringify(cloudData));
+          return;
+        }
+      } catch (err) {
+        console.warn('Firestore load failed, checking local backup:', err);
+      }
+
+      // 2. Fallback to localStorage
+      if (typeof window !== 'undefined') {
+        const storedConfig = localStorage.getItem('balaji_clinic_config');
+        if (storedConfig) {
+          try {
+            const parsed = JSON.parse(storedConfig);
+            setConfig((prev) => ({ ...prev, ...parsed }));
+          } catch (err) {
+            console.error('Failed to parse clinic config:', err);
+          }
         }
       }
-    }
+    };
+
+    fetchConfig();
   }, []);
 
   // Secure Password Retrieval
@@ -153,22 +180,39 @@ export default function AdminPage() {
     setPwdForm({ oldPassword: '', newPassword: '', confirmPassword: '' });
   };
 
-  // Save General Configuration to LocalStorage
-  const saveConfiguration = (updatedConfig) => {
+  // Save General Configuration to LocalStorage & Firestore
+  const saveConfiguration = async (updatedConfig) => {
     const dataToSave = updatedConfig || config;
-    setConfig(dataToSave);
-    localStorage.setItem('balaji_clinic_config', JSON.stringify(dataToSave));
-    setSaveSuccessMsg('All changes saved and synchronized successfully!');
-    setTimeout(() => setSaveSuccessMsg(''), 4000);
+    setIsSaving(true);
+    setSaveSuccessMsg('');
+
+    try {
+      setConfig(dataToSave);
+      localStorage.setItem('balaji_clinic_config', JSON.stringify(dataToSave));
+      window.dispatchEvent(new Event('balaji_data_changed'));
+
+      const docRef = doc(db, 'settings', 'clinic_config');
+      await setDoc(docRef, dataToSave, { merge: true });
+      setSaveSuccessMsg('✅ All changes saved to Cloud & live across devices!');
+    } catch (error) {
+      console.error('Firebase save error:', error);
+      setSaveSuccessMsg('Saved locally, but Cloud sync error: ' + error.message);
+    } finally {
+      setIsSaving(false);
+      setTimeout(() => setSaveSuccessMsg(''), 5000);
+    }
   };
 
-  // File Upload Helper (Encodes Image into clean base64 data)
-  const handleImageFileRead = (e, callback) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => callback(reader.result);
-      reader.readAsDataURL(file);
+  // File Upload Helper (Compresses Image automatically before upload)
+  const handleImageFileRead = async (e, callback) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const compressedBase64 = await compressImage(file, 800, 0.7);
+      callback(compressedBase64);
+    } catch (err) {
+      console.error("Image compression error:", err);
+      alert("Photo process karne mein error aaya. Kripya dusri photo chunein.");
     }
   };
 
@@ -189,7 +233,15 @@ export default function AdminPage() {
     ];
     const updatedConfig = { ...config, team: updatedTeam };
     saveConfiguration(updatedConfig);
-    setNewDoctor({ name: '', degree: 'BDS', role: 'Associate Dental Surgeon', type: 'Associate', image: '' });
+    setNewDoctor({
+      name: '',
+      degree: 'BDS',
+      role: 'Associate Dental Surgeon',
+      type: 'Associate',
+      specialty: '',
+      schedule: 'Daily OPD (9:00 AM - 6:30 PM)',
+      image: '',
+    });
   };
 
   const handleRemoveDoctor = (id) => {
@@ -256,7 +308,7 @@ export default function AdminPage() {
     }
   };
 
-  // ================= VIEW: LOGIN SCREEN (100% RESPONSIVE) =================
+  // ================= VIEW: LOGIN SCREEN =================
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen w-full bg-slate-900 flex items-center justify-center p-4 sm:p-6">
@@ -308,9 +360,47 @@ export default function AdminPage() {
     );
   }
 
-  // ================= VIEW: FULL DASHBOARD (RESPONSIVE FOR ALL DEVICES) =================
+  // ================= VIEW: FULL DASHBOARD =================
   return (
     <div className="min-h-screen w-full bg-slate-100 text-slate-900 pb-20 overflow-x-hidden">
+      {/* 1. Top Green Success Notification Banner */}
+      {saveSuccessMsg && (
+        <div className="fixed top-5 left-1/2 transform -translate-x-1/2 z-50 bg-emerald-600 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 text-sm md:text-base font-semibold animate-bounce">
+          <span>{saveSuccessMsg}</span>
+          <button 
+            onClick={() => setSaveSuccessMsg('')} 
+            className="ml-3 text-emerald-200 hover:text-white font-bold"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* 2. Floating Quick Save Button */}
+      <div className="fixed bottom-6 right-6 z-40">
+        <button
+          onClick={() => saveConfiguration()}
+          disabled={isSaving}
+          className={`flex items-center gap-2 px-6 py-3.5 rounded-full font-bold shadow-2xl text-white transition-all transform hover:scale-105 active:scale-95 ${
+            isSaving 
+              ? 'bg-slate-500 cursor-not-allowed' 
+              : 'bg-emerald-600 hover:bg-emerald-700 ring-4 ring-emerald-300/40'
+          }`}
+        >
+          {isSaving ? (
+            <>
+              <span className="inline-block animate-spin">⏳</span>
+              <span>Saving to Cloud...</span>
+            </>
+          ) : (
+            <>
+              <span>💾</span>
+              <span>Save Changes Now</span>
+            </>
+          )}
+        </button>
+      </div>
+
       {/* Top Navbar */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm w-full">
         <div className="max-w-6xl mx-auto px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-2">
@@ -324,6 +414,13 @@ export default function AdminPage() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+            <Link
+              href="/doctors"
+              target="_blank"
+              className="text-[11px] sm:text-xs font-bold text-teal-700 hover:text-teal-900 bg-teal-50 px-2.5 py-1 rounded-lg border border-teal-200"
+            >
+              👨‍⚕️ View Doctors Page
+            </Link>
             <Link
               href="/"
               target="_blank"
@@ -344,16 +441,6 @@ export default function AdminPage() {
 
       {/* Main Container */}
       <main className="max-w-6xl mx-auto px-3 sm:px-6 pt-4 sm:pt-6 space-y-4 sm:space-y-6 w-full">
-        {/* Success Alert Banner */}
-        {saveSuccessMsg && (
-          <div className="p-3 sm:p-4 bg-teal-600 text-white text-xs sm:text-sm font-bold rounded-xl sm:rounded-2xl shadow-md flex items-center justify-between gap-2">
-            <span className="truncate">✓ {saveSuccessMsg}</span>
-            <button type="button" onClick={() => setSaveSuccessMsg('')} className="text-white hover:text-teal-100 text-sm font-bold shrink-0 px-2">
-              ✕
-            </button>
-          </div>
-        )}
-
         {/* Mobile Horizontal Scrolling Tabs */}
         <div className="w-full overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <div className="bg-white rounded-xl sm:rounded-2xl p-1.5 border border-slate-200 shadow-sm flex items-center gap-1.5 w-max min-w-full sm:w-full">
@@ -383,7 +470,6 @@ export default function AdminPage() {
         {/* ================= TAB 1: OPERATIONS & CLINIC TIMING ================= */}
         {activeTab === 'operations' && (
           <div className="space-y-4 sm:space-y-6 w-full">
-            {/* Quick Status & Broadcast Banner */}
             <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-slate-200 shadow-sm space-y-4 w-full">
               <div className="border-b pb-3 flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-sm sm:text-base font-bold text-slate-900">
@@ -458,7 +544,6 @@ export default function AdminPage() {
               )}
             </div>
 
-            {/* Schedule Timings */}
             <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-slate-200 shadow-sm space-y-4 w-full">
               <h2 className="text-sm sm:text-base font-bold text-slate-900 border-b pb-3">OPD Working Hours</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
@@ -492,7 +577,6 @@ export default function AdminPage() {
               </div>
             </div>
 
-            {/* Location & Contacts */}
             <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-slate-200 shadow-sm space-y-4 w-full">
               <h2 className="text-sm sm:text-base font-bold text-slate-900 border-b pb-3">Clinic Location & Contacts</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -547,12 +631,14 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* ================= TAB 2: DOCTORS DIRECTORY ================= */}
+        {/* ================= TAB 2: DOCTORS DIRECTORY (UPDATED) ================= */}
         {activeTab === 'team' && (
           <div className="space-y-4 sm:space-y-6 w-full">
             {/* Add Doctor Form */}
             <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-slate-200 shadow-sm space-y-4 w-full">
-              <h2 className="text-sm sm:text-base font-bold text-slate-900 border-b pb-3">Add Doctor to Directory</h2>
+              <h2 className="text-sm sm:text-base font-bold text-slate-900 border-b pb-3">
+                Add Doctor to Directory (Permanent / Sunday Visiting Specialist)
+              </h2>
               <form onSubmit={handleAddDoctor} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
                 <div>
                   <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Doctor Name *</label>
@@ -570,7 +656,7 @@ export default function AdminPage() {
                   <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Degree</label>
                   <input
                     type="text"
-                    placeholder="e.g. BDS, MDS"
+                    placeholder="e.g. BDS, MDS (Ex-AIIMS Delhi)"
                     value={newDoctor.degree}
                     onChange={(e) => setNewDoctor({ ...newDoctor, degree: e.target.value })}
                     className="w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-teal-600 outline-none"
@@ -581,7 +667,7 @@ export default function AdminPage() {
                   <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Specialty Role</label>
                   <input
                     type="text"
-                    placeholder="e.g. Dental Surgeon"
+                    placeholder="e.g. Senior Consultant Orthodontist"
                     value={newDoctor.role}
                     onChange={(e) => setNewDoctor({ ...newDoctor, role: e.target.value })}
                     className="w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-teal-600 outline-none"
@@ -589,18 +675,41 @@ export default function AdminPage() {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Designation Type</label>
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Doctor Category / Type</label>
                   <select
                     value={newDoctor.type}
                     onChange={(e) => setNewDoctor({ ...newDoctor, type: e.target.value })}
                     className="w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-teal-600 outline-none bg-white"
                   >
-                    <option value="Associate">Associate Surgeon</option>
+                    <option value="Associate">Regular Associate Doctor</option>
+                    <option value="Guest">Sunday Visiting Specialist (Delhi)</option>
                     <option value="Consultant">Visiting Consultant</option>
                   </select>
                 </div>
 
-                <div className="sm:col-span-2">
+                <div>
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">विशेषज्ञता (Key Specialty)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Invisible Braces, Painless RCT, Dental Implants"
+                    value={newDoctor.specialty}
+                    onChange={(e) => setNewDoctor({ ...newDoctor, specialty: e.target.value })}
+                    className="w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-teal-600 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">OPD Schedule / Time</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Every Sunday (10 AM - 4 PM) या Daily OPD"
+                    value={newDoctor.schedule}
+                    onChange={(e) => setNewDoctor({ ...newDoctor, schedule: e.target.value })}
+                    className="w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-teal-600 outline-none"
+                  />
+                </div>
+
+                <div className="sm:col-span-2 md:col-span-3">
                   <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Doctor Photo (from Device)</label>
                   <input
                     type="file"
@@ -610,7 +719,7 @@ export default function AdminPage() {
                   />
                   {newDoctor.image && (
                     <div className="mt-2 flex items-center gap-2">
-                      <img src={newDoctor.image} alt="Preview" className="w-10 h-10 object-cover rounded-lg border border-teal-300" />
+                      <img src={newDoctor.image} alt="Preview" className="w-12 h-12 object-cover rounded-xl border border-teal-300 shadow-sm" />
                       <span className="text-xs text-teal-700 font-semibold">✓ Photo attached</span>
                     </div>
                   )}
@@ -630,23 +739,40 @@ export default function AdminPage() {
             {/* List Existing Doctors */}
             <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-slate-200 shadow-sm space-y-4 w-full">
               <div className="border-b pb-3 flex items-center justify-between">
-                <h2 className="text-sm sm:text-base font-bold text-slate-900">Active Doctors</h2>
+                <h2 className="text-sm sm:text-base font-bold text-slate-900">Active Doctors Directory</h2>
                 <span className="text-[11px] text-slate-500 font-medium">{config.team?.length || 0} Doctors</span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                 {config.team?.map((doc) => (
-                  <div key={doc.id || doc.name} className="p-3.5 border border-slate-200 rounded-xl bg-white shadow-sm flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2.5 min-w-0">
+                  <div key={doc.id || doc.name} className="p-3.5 border border-slate-200 rounded-2xl bg-white shadow-sm flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-2.5 min-w-0">
                       {doc.image ? (
-                        <img src={doc.image} alt={doc.name} className="w-11 h-11 rounded-xl object-cover border border-teal-100 shrink-0" />
+                        <img 
+                          src={doc.image} 
+                          alt={doc.name} 
+                          className="w-12 h-12 rounded-xl object-cover border border-teal-100 shrink-0" 
+                          onError={(e) => { e.currentTarget.src = '/images/doctor-1.jpeg'; }}
+                        />
                       ) : (
-                        <div className="w-11 h-11 rounded-xl bg-teal-50 text-teal-700 font-bold text-xs flex items-center justify-center shrink-0 border">DR</div>
+                        <div className="w-12 h-12 rounded-xl bg-teal-50 text-teal-700 font-bold text-xs flex items-center justify-center shrink-0 border">DR</div>
                       )}
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold text-slate-900 truncate">{doc.name}</p>
-                        <p className="text-[10px] text-teal-700 font-semibold truncate">{doc.degree} • {doc.type}</p>
-                        <p className="text-[10px] text-slate-500 truncate">{doc.role}</p>
+                      <div className="min-w-0 space-y-0.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="text-xs font-bold text-slate-900 truncate">{doc.name}</p>
+                          {doc.type === 'Guest' && (
+                            <span className="text-[9px] bg-amber-100 text-amber-800 font-black px-1.5 py-0.2 rounded">
+                              Sunday Guest
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-teal-700 font-semibold truncate">{doc.degree} • {doc.role}</p>
+                        {doc.specialty && (
+                          <p className="text-[9px] text-slate-500 line-clamp-1 italic">{doc.specialty}</p>
+                        )}
+                        {doc.schedule && (
+                          <p className="text-[9px] text-amber-700 font-medium">{doc.schedule}</p>
+                        )}
                       </div>
                     </div>
                     <button
