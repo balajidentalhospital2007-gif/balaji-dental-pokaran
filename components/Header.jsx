@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Phone, Clock, MapPin, Menu, X, AlertCircle, Shield, Megaphone, ArrowRight } from "lucide-react";
+import { Phone, Clock, MapPin, Menu, X, AlertCircle, Shield, Megaphone, ArrowRight, BookOpen, Sparkles } from "lucide-react";
 
 export default function Header({ lang, setLang, content, schedule, broadcast }) {
   const [isOpenNow, setIsOpenNow] = useState(false);
@@ -175,16 +175,27 @@ export default function Header({ lang, setLang, content, schedule, broadcast }) 
         </a>
 
         {/* Desktop Links */}
-        <nav className="hidden lg:flex items-center gap-5 text-sm font-semibold text-slate-600">
+        <nav className="hidden lg:flex items-center gap-4 xl:gap-5 text-sm font-semibold text-slate-600">
           <a href="/#about" className="hover:text-teal-600 transition">{lang === "en" ? "About" : "परिचय"}</a>
           <a href="/#services" className="hover:text-teal-600 transition">{lang === "en" ? "Services" : "सेवाएं"}</a>
           <a href="/#clinic-tour" className="hover:text-teal-600 transition">{lang === "en" ? "Gallery" : "गैलरी"}</a>
-          <a href="/#blog" className="hover:text-teal-600 transition">{lang === "en" ? "Dental Guide" : "स्वास्थ्य ब्लॉग"}</a>
           <a href="/#credentials" className="hover:text-teal-600 transition">{lang === "en" ? "Certificates" : "प्रमाणपत्र"}</a>
           
-          {/* Doctors Page Link via Next.js Link */}
-          <Link href="/doctors" className="hover:text-teal-600 transition text-teal-700 font-bold">
+          {/* Specialists Page Link */}
+          <Link href="/doctors" className="hover:text-teal-600 transition text-slate-700 font-semibold">
             {lang === "en" ? "Specialists" : "डॉक्टर्स"}
+          </Link>
+
+          {/* Featured Dental Care Guide Button */}
+          <Link
+            href="/dental-guide"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200/80 font-bold transition shadow-xs hover:shadow-sm"
+          >
+            <span>🦷</span>
+            <span>{lang === "en" ? "Dental Guide" : "दांत देखभाल गाइड"}</span>
+            <span className="text-[9px] bg-teal-600 text-white font-extrabold px-1.5 py-0.2 rounded-full uppercase">
+              NEW
+            </span>
           </Link>
 
           <a href="/#appointment" className="hover:text-teal-600 transition">{lang === "en" ? "Location" : "लोकेशन"}</a>
@@ -194,14 +205,14 @@ export default function Header({ lang, setLang, content, schedule, broadcast }) 
         <div className="hidden sm:flex items-center gap-2.5 shrink-0">
           <a
             href="tel:+919782687123"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition"
           >
             <Phone className="w-3.5 h-3.5 text-teal-600" />
             <span>+91 9782687123</span>
           </a>
           <a
             href="/#appointment"
-            className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-white bg-teal-600 hover:bg-teal-700 shadow-sm"
+            className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-white bg-teal-600 hover:bg-teal-700 shadow-sm transition active:scale-95"
           >
             {t.cta.bookAppointment}
           </a>
@@ -219,12 +230,34 @@ export default function Header({ lang, setLang, content, schedule, broadcast }) 
 
       {/* 4. Mobile Drawer Menu */}
       {mobileMenuOpen && (
-        <div className="lg:hidden bg-white border-t border-slate-100 px-4 py-3 space-y-2 shadow-lg">
-          <nav className="flex flex-col gap-2 text-xs font-bold text-slate-700">
+        <div className="lg:hidden bg-white border-t border-slate-100 px-4 py-3 space-y-2.5 shadow-lg">
+          
+          {/* Prominent Dental Guide Mobile Banner Button */}
+          <Link
+            href="/dental-guide"
+            onClick={() => setMobileMenuOpen(false)}
+            className="flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r from-teal-50 via-teal-100/60 to-cyan-50 border border-teal-200 text-teal-900 transition active:scale-98 shadow-xs"
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="text-xl">🦷</span>
+              <div className="min-w-0">
+                <p className="text-xs font-black truncate">
+                  {lang === "en" ? "Patient Dental Care & Symptoms Guide" : "दांत दर्द, लक्षण व देखभाल गाइड"}
+                </p>
+                <p className="text-[10px] text-teal-700 font-semibold truncate">
+                  {lang === "en" ? "Painless RCT, Implants & Doctor Tips" : "पेनलेस RCT, इंप्लांट्स व घरेलू सावधानियां"}
+                </p>
+              </div>
+            </div>
+            <span className="text-[10px] bg-teal-600 text-white font-extrabold px-2 py-0.5 rounded-full shrink-0 uppercase">
+              NEW
+            </span>
+          </Link>
+
+          <nav className="flex flex-col gap-2 text-xs font-bold text-slate-700 pt-1">
             <a href="/#about" onClick={() => setMobileMenuOpen(false)} className="py-1">{lang === "en" ? "About Doctor" : "चिकित्सक परिचय"}</a>
             <a href="/#services" onClick={() => setMobileMenuOpen(false)} className="py-1">{lang === "en" ? "Services" : "उपलब्ध सेवाएं"}</a>
             <a href="/#clinic-tour" onClick={() => setMobileMenuOpen(false)} className="py-1">{lang === "en" ? "Clinic Gallery" : "गैलरी"}</a>
-            <a href="/#blog" onClick={() => setMobileMenuOpen(false)} className="py-1">{lang === "en" ? "Dental Health Guide" : "स्वास्थ्य ब्लॉग"}</a>
             <a href="/#credentials" onClick={() => setMobileMenuOpen(false)} className="py-1">{lang === "en" ? "Certificates" : "प्रमाणपत्र"}</a>
             
             {/* Mobile Doctors Link */}
@@ -238,6 +271,7 @@ export default function Header({ lang, setLang, content, schedule, broadcast }) 
 
             <a href="/#appointment" onClick={() => setMobileMenuOpen(false)} className="py-1">{lang === "en" ? "Location & Timings" : "पता व अपॉइंटमेंट"}</a>
           </nav>
+
           <div className="pt-2 border-t border-slate-100 flex gap-2">
             <a
               href="tel:+919782687123"

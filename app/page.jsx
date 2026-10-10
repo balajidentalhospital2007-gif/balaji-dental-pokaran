@@ -9,6 +9,7 @@ import ClinicSlider from '../components/ClinicSlider';
 import { db } from '../lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 
+
 export default function HomePage() {
   const [lang, setLang] = useState("en");
 
@@ -66,6 +67,7 @@ export default function HomePage() {
         schedule={config.schedule} 
         broadcast={config.broadcast} 
       />
+     
       <MainSections 
         lang={lang} 
         content={clinicContent} 
@@ -73,11 +75,13 @@ export default function HomePage() {
         dynamicGallery={config.gallery}
         dynamicBlogs={config.blogs}
       />
+       
       <ClinicSlider 
         lang={lang} 
         gallery={config.gallery && config.gallery.length > 0 ? config.gallery : clinicContent.gallery}
         dynamicGallery={config.gallery} 
       />
+     
       <FooterAndTeam 
         lang={lang} 
         content={clinicContent} 

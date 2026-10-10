@@ -43,6 +43,18 @@ const initialClinicConfig = {
     { id: 4, src: '/images/a2.jpeg', titleEn: 'Digital RVG Diagnostic Unit', titleHi: 'डिजिटल डेंटल एक्सरे' },
   ],
   certificates: [],
+  awardsMedia: [
+    { id: 1, type: 'award', src: '/images/award-1.jpeg', titleEn: 'Excellence in Clinical Dentistry Award', titleHi: 'उत्कृष्ट दंत चिकित्सा सम्मान', publisher: 'State Dental Association', year: '2025' },
+    { id: 2, type: 'media', src: '/images/media-1.jpeg', titleEn: 'Dainik Bhaskar Feature on Painless Dentistry', titleHi: 'दैनिक भास्कर: दर्द-रहित डेंटल तकनीक पर विशेष रिपोर्ट', publisher: 'Dainik Bhaskar', year: '2025' },
+    { id: 3, type: 'media', src: '/images/media-2.jpeg', titleEn: 'Rajasthan Patrika Health Spotlight', titleHi: 'राजस्थान पत्रिका: मुख स्वास्थ्य एवं आधुनिक इंप्लांट', publisher: 'Rajasthan Patrika', year: '2024' },
+    { id: 4, type: 'award', src: '/images/award-2.jpeg', titleEn: 'Community Healthcare Leadership Honor', titleHi: 'सामुदायिक स्वास्थ्य सेवा सम्मान', publisher: 'Regional Health Summit', year: '2024' }
+  ],
+  dentalAdvisory: {
+    noticeEn: 'This informational portal does not constitute a doctor-patient relationship, medical diagnosis, or pharmacological prescription under the NMC Act. Self-medication or home treatments without clinical oral examination and RVG radiography are strictly hazardous. Always consult Dr. Rajendra Singh Bhati in person before taking any decision.',
+    noticeHi: 'यह जानकारी केवल सामान्य जागरूकता हेतु है और इसे मेडिकल डायग्नोसिस या दवा का पर्चा (Prescription) न माना जाए। क्लिनिकल जांच व एक्स-रे के बिना कोई भी दवा या घरेलू उपचार अपनाना पूर्णतः वर्जित है। किसी भी स्व-उपचार (Self-Treatment) के लिए मरीज स्वयं उत्तरदायी होगा।',
+    noticeHn: 'Yeh content sirf jankari ke liye hai, prescription nahi hai. Bina clinic par doctor ko dikhaye koi bhi goli ya gharelu tarika na aazmayein. Kuch bhi karne se pehle Dr. Rajendra Singh Bhati se personalized checkup karwayein.',
+  },
+  dentalFaqs: []
 };
 
 export default function AdminPage() {
@@ -62,7 +74,7 @@ export default function AdminPage() {
   const [pwdForm, setPwdForm] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });
   const [pwdMsg, setPwdMsg] = useState({ text: '', type: '' });
 
-  // Doctor Form State (Includes Specialty & Delhi Guest Doctor support)
+  // Doctor Form State
   const [newDoctor, setNewDoctor] = useState({
     name: '',
     degree: 'BDS',
@@ -91,6 +103,27 @@ export default function AdminPage() {
     src: '',
   });
 
+  // Awards & Media Form State
+  const [newAwardMedia, setNewAwardMedia] = useState({
+    type: 'award',
+    titleEn: '',
+    titleHi: '',
+    publisher: '',
+    year: '2026',
+    src: '',
+  });
+
+  // Dental FAQ / Guideline Form State
+  const [newFaq, setNewFaq] = useState({
+    cat: 'emergency',
+    qEn: '',
+    qHi: '',
+    qHn: '',
+    aEn: '',
+    aHi: '',
+    aHn: '',
+  });
+
   // Load configuration and session on component mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -102,12 +135,17 @@ export default function AdminPage() {
 
     const fetchConfig = async () => {
       try {
-        // 1. Firebase Cloud Firestore se latest data load
         const docRef = doc(db, 'settings', 'clinic_config');
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           const cloudData = docSnap.data();
-          setConfig((prev) => ({ ...prev, ...cloudData }));
+          setConfig((prev) => ({
+            ...prev,
+            ...cloudData,
+            awardsMedia: cloudData.awardsMedia || prev.awardsMedia || initialClinicConfig.awardsMedia,
+            dentalAdvisory: cloudData.dentalAdvisory || prev.dentalAdvisory || initialClinicConfig.dentalAdvisory,
+            dentalFaqs: cloudData.dentalFaqs || prev.dentalFaqs || initialClinicConfig.dentalFaqs,
+          }));
           localStorage.setItem('balaji_clinic_config', JSON.stringify(cloudData));
           return;
         }
@@ -115,13 +153,18 @@ export default function AdminPage() {
         console.warn('Firestore load failed, checking local backup:', err);
       }
 
-      // 2. Fallback to localStorage
       if (typeof window !== 'undefined') {
         const storedConfig = localStorage.getItem('balaji_clinic_config');
         if (storedConfig) {
           try {
             const parsed = JSON.parse(storedConfig);
-            setConfig((prev) => ({ ...prev, ...parsed }));
+            setConfig((prev) => ({
+              ...prev,
+              ...parsed,
+              awardsMedia: parsed.awardsMedia || prev.awardsMedia || initialClinicConfig.awardsMedia,
+              dentalAdvisory: parsed.dentalAdvisory || prev.dentalAdvisory || initialClinicConfig.dentalAdvisory,
+              dentalFaqs: parsed.dentalFaqs || prev.dentalFaqs || initialClinicConfig.dentalFaqs,
+            }));
           } catch (err) {
             console.error('Failed to parse clinic config:', err);
           }
@@ -203,7 +246,7 @@ export default function AdminPage() {
     }
   };
 
-  // File Upload Helper (Compresses Image automatically before upload)
+  // File Upload Helper
   const handleImageFileRead = async (e, callback) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -304,6 +347,96 @@ export default function AdminPage() {
     if (confirm('Delete this certificate?')) {
       const updatedCertificates = (config.certificates || []).filter((c) => c.id !== id);
       const updatedConfig = { ...config, certificates: updatedCertificates };
+      saveConfiguration(updatedConfig);
+    }
+  };
+
+  // Awards & Media Handlers
+  const handleAddAwardMedia = (e) => {
+    e.preventDefault();
+    if (!newAwardMedia.src) {
+      alert('Kripya award ya news cutting ki photo upload karein.');
+      return;
+    }
+    if (!newAwardMedia.titleEn.trim() && !newAwardMedia.titleHi.trim()) {
+      alert('Kripya Award ya News ka title enter karein.');
+      return;
+    }
+
+    const newItem = {
+      id: Date.now(),
+      type: newAwardMedia.type,
+      titleEn: newAwardMedia.titleEn.trim() || newAwardMedia.titleHi.trim(),
+      titleHi: newAwardMedia.titleHi.trim() || newAwardMedia.titleEn.trim(),
+      publisher: newAwardMedia.publisher.trim() || 'Balaji Dental Clinic',
+      year: newAwardMedia.year.trim() || '2026',
+      src: newAwardMedia.src,
+    };
+
+    const updatedAwardsMedia = [newItem, ...(config.awardsMedia || [])];
+    const updatedConfig = { ...config, awardsMedia: updatedAwardsMedia };
+    saveConfiguration(updatedConfig);
+
+    setNewAwardMedia({
+      type: 'award',
+      titleEn: '',
+      titleHi: '',
+      publisher: '',
+      year: '2026',
+      src: '',
+    });
+  };
+
+  const handleRemoveAwardMedia = (id) => {
+    if (confirm('Kya aap is Award/News photo ko slider se delete karna chahte hain?')) {
+      const updatedAwardsMedia = (config.awardsMedia || []).filter((item) => item.id !== id);
+      const updatedConfig = { ...config, awardsMedia: updatedAwardsMedia };
+      saveConfiguration(updatedConfig);
+    }
+  };
+
+  // Dental FAQ / Guideline Handlers
+  const handleAddFaq = (e) => {
+    e.preventDefault();
+    if (!newFaq.qEn.trim() && !newFaq.qHi.trim() && !newFaq.qHn.trim()) {
+      alert('Kripya sawaal enter karein.');
+      return;
+    }
+    if (!newFaq.aEn.trim() && !newFaq.aHi.trim() && !newFaq.aHn.trim()) {
+      alert('Kripya jawaab enter karein.');
+      return;
+    }
+
+    const createdFaq = {
+      id: Date.now(),
+      cat: newFaq.cat,
+      qEn: newFaq.qEn.trim() || newFaq.qHi.trim() || newFaq.qHn.trim(),
+      qHi: newFaq.qHi.trim() || newFaq.qEn.trim() || newFaq.qHn.trim(),
+      qHn: newFaq.qHn.trim() || newFaq.qHi.trim() || newFaq.qEn.trim(),
+      aEn: newFaq.aEn.trim() || newFaq.aHi.trim() || newFaq.aHn.trim(),
+      aHi: newFaq.aHi.trim() || newFaq.aEn.trim() || newFaq.aHn.trim(),
+      aHn: newFaq.aHn.trim() || newFaq.aHi.trim() || newFaq.aEn.trim(),
+    };
+
+    const updatedFaqs = [createdFaq, ...(config.dentalFaqs || [])];
+    const updatedConfig = { ...config, dentalFaqs: updatedFaqs };
+    saveConfiguration(updatedConfig);
+
+    setNewFaq({
+      cat: 'emergency',
+      qEn: '',
+      qHi: '',
+      qHn: '',
+      aEn: '',
+      aHi: '',
+      aHn: '',
+    });
+  };
+
+  const handleRemoveFaq = (id) => {
+    if (confirm('Kya aap is FAQ / Guide item ko delete karna chahte hain?')) {
+      const updatedFaqs = (config.dentalFaqs || []).filter((item) => item.id !== id);
+      const updatedConfig = { ...config, dentalFaqs: updatedFaqs };
       saveConfiguration(updatedConfig);
     }
   };
@@ -415,6 +548,14 @@ export default function AdminPage() {
 
           <div className="flex items-center gap-2 sm:gap-4 shrink-0">
             <Link
+              href="/dental-guide"
+              target="_blank"
+              className="text-[11px] sm:text-xs font-bold text-teal-700 hover:text-teal-900 bg-teal-50 px-2.5 py-1 rounded-lg border border-teal-200 flex items-center gap-1"
+            >
+              <span>🦷</span>
+              <span>View Guide Page</span>
+            </Link>
+            <Link
               href="/doctors"
               target="_blank"
               className="text-[11px] sm:text-xs font-bold text-teal-700 hover:text-teal-900 bg-teal-50 px-2.5 py-1 rounded-lg border border-teal-200"
@@ -446,8 +587,10 @@ export default function AdminPage() {
           <div className="bg-white rounded-xl sm:rounded-2xl p-1.5 border border-slate-200 shadow-sm flex items-center gap-1.5 w-max min-w-full sm:w-full">
             {[
               { id: 'operations', label: '⏰ Operations & Notice' },
+              { id: 'guide', label: '🩺 Dental Guide & Advisory' },
               { id: 'team', label: '👨‍⚕️ Doctors Directory' },
               { id: 'gallery', label: '🖼️ Tour Photos' },
+              { id: 'awards', label: '🏆 Awards & Media' },
               { id: 'certificates', label: '📜 Certificates' },
               { id: 'security', label: '🔒 Security & Password' },
             ].map((tab) => (
@@ -466,6 +609,233 @@ export default function AdminPage() {
             ))}
           </div>
         </div>
+
+        {/* ================= TAB: DENTAL GUIDE & LEGAL ADVISORY ================= */}
+        {activeTab === 'guide' && (
+          <div className="space-y-4 sm:space-y-6 w-full">
+            {/* 1. Legal Warning & Notice Bar Editor */}
+            <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-slate-200 shadow-sm space-y-4 w-full">
+              <div className="border-b pb-3 flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h2 className="text-sm sm:text-base font-bold text-slate-900">
+                    Official Medical Disclaimer & Legal Protection Notice
+                  </h2>
+                  <p className="text-[11px] sm:text-xs text-slate-500">
+                    Yeh notice har patient ko guide page ke sabse upar dikhega taaki koi self-medication na kare.
+                  </p>
+                </div>
+                <span className="text-[10px] bg-amber-100 text-amber-900 font-extrabold px-2.5 py-1 rounded-full border border-amber-300">
+                  Legal Immunity Clause
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">
+                    Notice Text (Hindi) *
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={config.dentalAdvisory?.noticeHi || ''}
+                    onChange={(e) => setConfig({
+                      ...config,
+                      dentalAdvisory: { ...config.dentalAdvisory, noticeHi: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-teal-600 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">
+                    Notice Text (English) *
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={config.dentalAdvisory?.noticeEn || ''}
+                    onChange={(e) => setConfig({
+                      ...config,
+                      dentalAdvisory: { ...config.dentalAdvisory, noticeEn: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-teal-600 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">
+                    Notice Text (Hinglish)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={config.dentalAdvisory?.noticeHn || ''}
+                    onChange={(e) => setConfig({
+                      ...config,
+                      dentalAdvisory: { ...config.dentalAdvisory, noticeHn: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-teal-600 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="text-right pt-2 border-t">
+                <button
+                  type="button"
+                  onClick={() => saveConfiguration()}
+                  className="px-5 py-2 bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow transition"
+                >
+                  Save Advisory Notice
+                </button>
+              </div>
+            </div>
+
+            {/* 2. Add New Clinical FAQ / Guideline Form */}
+            <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-slate-200 shadow-sm space-y-4 w-full">
+              <div className="border-b pb-3 flex items-center justify-between">
+                <h2 className="text-sm sm:text-base font-bold text-slate-900">
+                  Add New Clinical Question / Patient Guideline
+                </h2>
+                <span className="text-xs text-teal-700 font-bold bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">
+                  Multilingual Ready
+                </span>
+              </div>
+
+              <form onSubmit={handleAddFaq} className="space-y-3.5">
+                <div className="w-full sm:w-1/2">
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">
+                    Category Topic *
+                  </label>
+                  <select
+                    value={newFaq.cat}
+                    onChange={(e) => setNewFaq({ ...newFaq, cat: e.target.value })}
+                    className="w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-teal-600 outline-none bg-white font-semibold"
+                  >
+                    <option value="emergency">⚡ Emergency & Severe Pain (रात का दर्द / इमरजेंसी)</option>
+                    <option value="rct">🦷 Root Canal & Caps (रूट कैनाल व कैप)</option>
+                    <option value="gums">🩸 Gums, Bleeding & Pyorrhea (मसूड़े व पायरिया)</option>
+                    <option value="medical">🩺 Diabetes, BP & Medical Safety (शुगर / बीपी सावधानी)</option>
+                    <option value="implants">🔩 Fixed Dental Implants (फिक्स्ड नकली दांत)</option>
+                    <option value="wisdom">⚠️ Wisdom Teeth (अकल दाढ़ व सर्जरी)</option>
+                    <option value="kids">🧒 Braces & Alignment (तार व सीधे दांत)</option>
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Question (Hindi) *</label>
+                    <input
+                      type="text"
+                      placeholder="उदा. क्या रूट कैनाल में दर्द होता है?"
+                      value={newFaq.qHi}
+                      onChange={(e) => setNewFaq({ ...newFaq, qHi: e.target.value })}
+                      className="w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-teal-600 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Question (English) *</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Does Root Canal Treatment hurt?"
+                      value={newFaq.qEn}
+                      onChange={(e) => setNewFaq({ ...newFaq, qEn: e.target.value })}
+                      className="w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-teal-600 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Question (Hinglish)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Kya RCT me dard hota hai?"
+                      value={newFaq.qHn}
+                      onChange={(e) => setNewFaq({ ...newFaq, qHn: e.target.value })}
+                      className="w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-teal-600 outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Doctor Advice / Answer (Hindi) *</label>
+                    <textarea
+                      rows={3}
+                      placeholder="प्रामाणिक चिकित्सीय उत्तर लिखें..."
+                      value={newFaq.aHi}
+                      onChange={(e) => setNewFaq({ ...newFaq, aHi: e.target.value })}
+                      className="w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-teal-600 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Doctor Advice / Answer (English) *</label>
+                    <textarea
+                      rows={3}
+                      placeholder="Clinical answer in English..."
+                      value={newFaq.aEn}
+                      onChange={(e) => setNewFaq({ ...newFaq, aEn: e.target.value })}
+                      className="w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-teal-600 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Doctor Advice / Answer (Hinglish)</label>
+                    <textarea
+                      rows={3}
+                      placeholder="Saral Hinglish me jawab..."
+                      value={newFaq.aHn}
+                      onChange={(e) => setNewFaq({ ...newFaq, aHn: e.target.value })}
+                      className="w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-teal-600 outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="text-right pt-2">
+                  <button
+                    type="submit"
+                    className="w-full sm:w-auto px-6 py-2.5 bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow transition"
+                  >
+                    + Add Question to Guide
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* 3. Manage Custom FAQs List */}
+            <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-slate-200 shadow-sm space-y-4 w-full">
+              <div className="border-b pb-3 flex items-center justify-between">
+                <h2 className="text-sm sm:text-base font-bold text-slate-900">
+                  Custom Added Clinical FAQs ({config.dentalFaqs?.length || 0})
+                </h2>
+                <span className="text-[11px] text-slate-500 font-medium">Click ✕ to remove any question</span>
+              </div>
+
+              {(!config.dentalFaqs || config.dentalFaqs.length === 0) ? (
+                <p className="text-xs text-slate-400 italic">No custom questions added yet. Default verified clinical questions are currently active.</p>
+              ) : (
+                <div className="space-y-2.5">
+                  {config.dentalFaqs.map((faq) => (
+                    <div key={faq.id} className="p-3 border border-slate-200 rounded-xl bg-slate-50 flex items-start justify-between gap-3">
+                      <div className="min-w-0 space-y-1">
+                        <span className="text-[9px] bg-teal-100 text-teal-800 font-extrabold px-2 py-0.5 rounded uppercase">
+                          {faq.cat}
+                        </span>
+                        <p className="text-xs font-bold text-slate-900 leading-snug">
+                          {faq.qHi || faq.qEn}
+                        </p>
+                        <p className="text-[11px] text-slate-600 line-clamp-2">
+                          {faq.aHi || faq.aEn}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveFaq(faq.id)}
+                        className="text-red-500 hover:text-red-700 font-bold text-xs px-2 py-1 rounded hover:bg-red-50 transition shrink-0"
+                        title="Delete Question"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* ================= TAB 1: OPERATIONS & CLINIC TIMING ================= */}
         {activeTab === 'operations' && (
@@ -631,10 +1001,9 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* ================= TAB 2: DOCTORS DIRECTORY (UPDATED) ================= */}
+        {/* ================= TAB 2: DOCTORS DIRECTORY ================= */}
         {activeTab === 'team' && (
           <div className="space-y-4 sm:space-y-6 w-full">
-            {/* Add Doctor Form */}
             <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-slate-200 shadow-sm space-y-4 w-full">
               <h2 className="text-sm sm:text-base font-bold text-slate-900 border-b pb-3">
                 Add Doctor to Directory (Permanent / Sunday Visiting Specialist)
@@ -736,7 +1105,6 @@ export default function AdminPage() {
               </form>
             </div>
 
-            {/* List Existing Doctors */}
             <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-slate-200 shadow-sm space-y-4 w-full">
               <div className="border-b pb-3 flex items-center justify-between">
                 <h2 className="text-sm sm:text-base font-bold text-slate-900">Active Doctors Directory</h2>
@@ -872,7 +1240,153 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* ================= TAB 4: MEDICAL CERTIFICATES ================= */}
+        {/* ================= TAB 4: AWARDS & MEDIA COVERAGE ================= */}
+        {activeTab === 'awards' && (
+          <div className="space-y-4 sm:space-y-6 w-full">
+            <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-slate-200 shadow-sm space-y-4 w-full">
+              <div className="border-b pb-3 flex items-center justify-between">
+                <h2 className="text-sm sm:text-base font-bold text-slate-900">
+                  Add Award Photo or Newspaper Article (Media Coverage)
+                </h2>
+                <span className="text-[10px] sm:text-xs font-bold text-teal-700 bg-teal-50 px-2.5 py-1 rounded-full border border-teal-200">
+                  Auto-syncs to Home Slider
+                </span>
+              </div>
+
+              <form onSubmit={handleAddAwardMedia} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+                <div>
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Category Type *</label>
+                  <select
+                    value={newAwardMedia.type}
+                    onChange={(e) => setNewAwardMedia({ ...newAwardMedia, type: e.target.value })}
+                    className="w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-teal-600 outline-none bg-white font-medium"
+                  >
+                    <option value="award">🏆 Award & Honor (सम्मान)</option>
+                    <option value="media">📰 Newspaper Article (अखबार की कटिंग / मीडिया)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Title (English) *</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. State Dental Excellence Award"
+                    value={newAwardMedia.titleEn}
+                    onChange={(e) => setNewAwardMedia({ ...newAwardMedia, titleEn: e.target.value })}
+                    className="w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-teal-600 outline-none"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Title (Hindi)</label>
+                  <input
+                    type="text"
+                    placeholder="उदा. राज्य स्तरीय दंत चिकित्सा सम्मान"
+                    value={newAwardMedia.titleHi}
+                    onChange={(e) => setNewAwardMedia({ ...newAwardMedia, titleHi: e.target.value })}
+                    className="w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-teal-600 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Publisher / Organization</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Dainik Bhaskar / IDA"
+                    value={newAwardMedia.publisher}
+                    onChange={(e) => setNewAwardMedia({ ...newAwardMedia, publisher: e.target.value })}
+                    className="w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-teal-600 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Year</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 2025"
+                    value={newAwardMedia.year}
+                    onChange={(e) => setNewAwardMedia({ ...newAwardMedia, year: e.target.value })}
+                    className="w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:ring-2 focus:ring-teal-600 outline-none"
+                  />
+                </div>
+
+                <div className="sm:col-span-2 md:col-span-3">
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">Upload Photo / Scanned Article *</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleImageFileRead(e, (base64) => setNewAwardMedia({ ...newAwardMedia, src: base64 }))}
+                    className="w-full text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 cursor-pointer"
+                  />
+                  {newAwardMedia.src && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <img src={newAwardMedia.src} alt="Preview" className="w-16 h-12 object-cover rounded-lg border border-teal-300 shadow-sm" />
+                      <span className="text-xs text-teal-700 font-semibold">✓ Photo attached & compressed</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="sm:col-span-2 md:col-span-3 text-right pt-2">
+                  <button
+                    type="submit"
+                    className="w-full sm:w-auto px-6 py-2.5 bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow transition"
+                  >
+                    + Add to Awards & Media Slider
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-slate-200 shadow-sm space-y-4 w-full">
+              <div className="border-b pb-3 flex items-center justify-between">
+                <h2 className="text-sm sm:text-base font-bold text-slate-900">
+                  Active Awards & Media ({config.awardsMedia?.length || 0})
+                </h2>
+                <span className="text-xs text-slate-500 font-medium">Click Remove to delete from slider</span>
+              </div>
+
+              {(!config.awardsMedia || config.awardsMedia.length === 0) ? (
+                <p className="text-xs text-slate-400 italic">No awards or media items added yet.</p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  {config.awardsMedia.map((item) => (
+                    <div key={item.id} className="p-3 border border-slate-200 rounded-xl flex items-start gap-3 bg-white shadow-sm">
+                      <img 
+                        src={item.src} 
+                        alt={item.titleEn} 
+                        className="w-16 h-16 object-cover rounded-lg border border-slate-200 shrink-0 bg-slate-50"
+                        onError={(e) => { e.currentTarget.src = '/images/h1.jpeg'; }}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${
+                            item.type === 'media' ? 'bg-cyan-100 text-cyan-800' : 'bg-amber-100 text-amber-800'
+                          }`}>
+                            {item.type === 'media' ? '📰 News' : '🏆 Award'}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-semibold">{item.year}</span>
+                        </div>
+                        <p className="text-xs font-bold text-slate-900 truncate mt-1">{item.titleEn}</p>
+                        <p className="text-[10px] text-slate-500 truncate">{item.publisher}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveAwardMedia(item.id)}
+                        className="text-red-500 hover:text-red-700 text-xs font-bold px-2 py-1 hover:bg-red-50 rounded transition shrink-0"
+                        title="Remove"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ================= TAB 5: MEDICAL CERTIFICATES ================= */}
         {activeTab === 'certificates' && (
           <div className="space-y-4 sm:space-y-6 w-full">
             <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-slate-200 shadow-sm space-y-4 w-full">
@@ -975,7 +1489,7 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* ================= TAB 5: SECURITY & PASSWORD ================= */}
+        {/* ================= TAB 6: SECURITY & PASSWORD ================= */}
         {activeTab === 'security' && (
           <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-8 border border-slate-200 shadow-sm space-y-5 max-w-lg mx-auto w-full">
             <div>

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import AwardsAndMedia from './AwardsAndMedia';
 import { 
   Award, ShieldCheck, Stethoscope, CheckCircle, Phone, 
   ChevronRight, X, ExternalLink, BookOpen, Image as ImageIcon, Calendar
@@ -167,7 +168,8 @@ export default function MainSections({ lang, content, dynamicGallery, dynamicBlo
 
         </div>
       </section>
-
+      <AwardsAndMedia lang={lang} />
+      
       {/* 3. SERVICES */}
       <section id="services" className="space-y-6">
         <div className="text-center max-w-xl mx-auto space-y-1 px-2">
